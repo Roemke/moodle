@@ -894,3 +894,21 @@ $string['advanced:cut_desc'] = 'Cut';
 $string['advanced:paste_desc'] = 'Paste';
 $string['advanced:shortcuts_desc'] = 'Accessibility help';
 $string['autosave:restore_content'] = 'Restore auto-saved content';
+
+// == Modificatinos for rj_insertcode == 
+$string['rj_insertcode_dlg:title'] = 'Insert Code';
+$string['rj_insertcode_dlg:chooseCode'] = 'Choose the language'; 
+$string['rj_insertcode_dlg:formatMode'] = 'Choose format mode'; 
+$string['rj_insertcode_dlg:inlineStyleSheets'] = 'Inline Style Sheets';
+$string['rj_insertcode_dlg:classStyleSheets'] = 'Class Style Sheets';
+$string['rj_insertcode_dlg:header'] = 'Header';
+$string['rj_insertcode_dlg:lineNumbers'] = 'Show line numbers';
+$string['rj_insertcode_dlg:lineNumbersOn'] = 'Yes';
+$string['rj_insertcode_dlg:lineNumbersOff'] = 'No';
+$string['rj_insertcode_dlg:startLine'] = 'Initial line number';
+$string['rj_insertcode_dlg:contents'] = 'Code';
+$string['rj_insertcode_dlg:width'] = 'Width';  
+$string['rj_insertcode_dlg:height'] = 'Height';
+$string['rj_insertcode_dlg:percent'] = 'Percent';
+$string['rj_insertcode_dlg:pixels'] = 'Pixels';    
+$string['rj_insertcode:desc'] = 'Insert/Edit Code';
