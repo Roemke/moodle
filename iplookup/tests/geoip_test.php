@@ -25,29 +25,37 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
+
+require_once("{$CFG->libdir}/filelib.php");
+require_once("{$CFG->dirroot}/iplookup/lib.php");
+
 
 /**
  * GeoIp data file parsing test.
  */
 class core_iplookup_geoip_testcase extends advanced_testcase {
-
-    public function test_geoip() {
-        global $CFG;
-        require_once("$CFG->libdir/filelib.php");
-        require_once("$CFG->dirroot/iplookup/lib.php");
-
+    public function setUp() {
         if (!PHPUNIT_LONGTEST) {
-            // this may take a long time
-            return;
+            // These tests are intensive and required downloads.
+            $this->markTestSkipped('PHPUNIT_LONGTEST is not defined');
         }
 
         $this->resetAfterTest();
+    }
 
-        // let's store the file somewhere
+
+    /**
+     * Setup the GeoIP2File system.
+     */
+    public function setup_geoip2file() {
+        global $CFG;
+
+        // Store the file somewhere where it won't be wiped out..
         $gzfile = "$CFG->dataroot/phpunit/geoip/GeoLiteCity.dat.gz";
         check_dir_exists(dirname($gzfile));
         if (file_exists($gzfile) and (filemtime($gzfile) < time() - 60*60*24*30)) {
-            // delete file if older than 1 month
+            // Delete file if older than 1 month.
             unlink($gzfile);
         }
 
@@ -70,17 +78,42 @@ class core_iplookup_geoip_testcase extends advanced_testcase {
         $this->assertTrue(file_exists($geoipfile));
 
         $CFG->geoipfile = $geoipfile;
+    }
 
-        $result = iplookup_find_location('147.230.16.1');
+    /**
+     * Test the format of data returned in the iplookup_find_location function.
+     *
+     * @dataProvider ip_provider
+     * @param   string  $ip The IP to test
+     */
+    public function test_ip($ip) {
+        $this->setup_geoip2file();
 
-        $this->assertEquals('array', gettype($result));
-        $this->assertEquals('Liberec', $result['city']);
-        $this->assertEquals(15.0653, $result['longitude'], '', 0.001);
-        $this->assertEquals(50.7639, $result['latitude'], '', 0.001);
+        // Note: The results we get from the iplookup tests are beyond our control.
+        // We used to check a specific IP to a known location, but these have become less reliable and change too
+        // frequently to be used for testing.
+
+        $result = iplookup_find_location($ip);
+
+        $this->assertInternalType('array', $result);
+        $this->assertInternalType('float', $result['latitude']);
+        $this->assertInternalType('float', $result['longitude']);
+        $this->assertInternalType('string', $result['city']);
+        $this->assertInternalType('string', $result['country']);
+        $this->assertInternalType('array', $result['title']);
+        $this->assertInternalType('string', $result['title'][0]);
+        $this->assertInternalType('string', $result['title'][1]);
         $this->assertNull($result['error']);
-        $this->assertEquals('array', gettype($result['title']));
-        $this->assertEquals('Liberec', $result['title'][0]);
-        $this->assertEquals('Czech Republic', $result['title'][1]);
+    }
+
+    /**
+     * Data provider for IP lookup test.
+     *
+     * @return array
+     */
+    public function ip_provider() {
+        return [
+            'IPv4: github.com' => ['192.30.255.112'],
+        ];
     }
 }
-
