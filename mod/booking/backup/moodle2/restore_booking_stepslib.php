@@ -22,9 +22,8 @@
  * @copyright 2010 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-/**
- * Define all the restore steps that will be used by the restore_booking_activity_task
- */
+
+defined('MOODLE_INTERNAL') || die;
 
 /**
  * Structure step to restore one booking activity
@@ -46,6 +45,8 @@ class restore_booking_activity_structure_step extends restore_activity_structure
                 '/activity/booking/options/option/others/other');
         $paths[] = new restore_path_element('booking_optiondate',
                 '/activity/booking/optiondates/optiondate');
+        $paths[] = new restore_path_element('booking_customfield',
+                '/activity/booking/customfields/customfield');
 
         if ($userinfo) {
             $paths[] = new restore_path_element('booking_answer', '/activity/booking/answers/answer');
@@ -53,7 +54,7 @@ class restore_booking_activity_structure_step extends restore_activity_structure
                     '/activity/booking/teachers/teacher');
         }
 
-        // Return the paths wrapped into standard activity structure
+        // Return the paths wrapped into standard activity structure.
         return $this->prepare_activity_structure($paths);
     }
 
@@ -64,9 +65,9 @@ class restore_booking_activity_structure_step extends restore_activity_structure
         $data->course = $this->get_courseid();
         $data->timemodified = $this->apply_date_offset($data->timemodified);
 
-        // insert the booking record
+        // insert the booking record.
         $newitemid = $DB->insert_record('booking', $data);
-        // immediately after inserting "activity" record, call this
+        // immediately after inserting "activity" record, call this.
         $this->apply_activity_instance($newitemid);
     }
 
@@ -93,8 +94,7 @@ class restore_booking_activity_structure_step extends restore_activity_structure
         $data->timemodified = $this->apply_date_offset($data->timemodified);
 
         $DB->insert_record('booking_answers', $data);
-        // No need to save this mapping as far as nothing depend on it
-        // (child paths, file areas nor links decoder)
+        // No need to save this mapping as far as nothing depend on it.
     }
 
     protected function process_booking_optiondate($data) {
@@ -105,8 +105,7 @@ class restore_booking_activity_structure_step extends restore_activity_structure
         $data->optionid = $this->get_mappingid('booking_option', $data->optionid);
 
         $DB->insert_record('booking_optiondates', $data);
-        // No need to save this mapping as far as nothing depend on it
-        // (child paths, file areas nor links decoder)
+        // No need to save this mapping as far as nothing depend on it.
     }
 
     protected function process_booking_teacher($data) {
@@ -117,8 +116,7 @@ class restore_booking_activity_structure_step extends restore_activity_structure
         $data->optionid = $this->get_mappingid('booking_option', $data->optionid);
         $data->userid = $this->get_mappingid('user', $data->userid);
         $DB->insert_record('booking_teachers', $data);
-        // No need to save this mapping as far as nothing depend on it
-        // (child paths, file areas nor links decoder)
+        // No need to save this mapping as far as nothing depend on it.
     }
 
     protected function process_booking_category($data) {
@@ -128,7 +126,6 @@ class restore_booking_activity_structure_step extends restore_activity_structure
         $data->course = $this->get_courseid();
         $DB->insert_record('booking_category', $data);
         // No need to save this mapping as far as nothing depend on it
-        // (child paths, file areas nor links decoder)
     }
 
     protected function process_booking_tag($data) {
@@ -137,8 +134,7 @@ class restore_booking_activity_structure_step extends restore_activity_structure
         $data = (object) $data;
         $data->courseid = $this->get_courseid();
         $DB->insert_record('booking_tags', $data);
-        // No need to save this mapping as far as nothing depend on it
-        // (child paths, file areas nor links decoder)
+        // No need to save this mapping as far as nothing depend on it.
     }
 
     protected function process_booking_institution($data) {
@@ -147,8 +143,7 @@ class restore_booking_activity_structure_step extends restore_activity_structure
         $data = (object) $data;
         $data->course = $this->get_courseid();
         $DB->insert_record('booking_institutions', $data);
-        // No need to save this mapping as far as nothing depend on it
-        // (child paths, file areas nor links decoder)
+        // No need to save this mapping as far as nothing depend on it.
     }
 
     protected function process_booking_other($data) {
@@ -157,12 +152,23 @@ class restore_booking_activity_structure_step extends restore_activity_structure
         $data = (object) $data;
         $data->optionid = $this->get_mappingid('booking_option', $data->optionid);
         $DB->insert_record('booking_other', $data);
-        // No need to save this mapping as far as nothing depend on it
-        // (child paths, file areas nor links decoder)
+        // No need to save this mapping as far as nothing depend on it.
+    }
+
+    protected function process_booking_customfield($data) {
+        global $DB;
+
+        $data = (object)$data;
+
+        $data->bookingid = $this->get_new_parentid('booking');
+        $data->optionid = $this->get_mappingid('booking_option', $data->optionid);
+
+        $DB->insert_record('booking_customfields', $data);
+        // No need to save this mapping as far as nothing depend on it.
     }
 
     protected function after_execute() {
-        // Add booking related files, no need to match by itemname (just internally handled context)
+        // Add booking related files, no need to match by itemname (just internally handled context).
         $this->add_related_files('mod_booking', 'intro', null);
         $this->add_related_files('mod_booking', 'bookingpolicy', null);
         $this->add_related_files('mod_booking', 'description', 'booking_option');

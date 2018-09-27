@@ -16,9 +16,6 @@
 require_once("../../config.php");
 require_once("lib.php");
 require_once($CFG->dirroot . '/tag/lib.php');
-if ($CFG->branch < 31) {
-    require_once($CFG->dirroot . '/tag/locallib.php');
-}
 $id = required_param('id', PARAM_INT);
 $tagname = optional_param('tag', '', PARAM_TAG);
 
@@ -29,20 +26,9 @@ $PAGE->set_url($url);
 list($course, $cm) = get_course_and_cm_from_cmid($id);
 
 require_course_login($course, false, $cm);
-
-if ($CFG->branch >= 31) {
-    $tag = core_tag_tag::get_by_name(0, $tagname);
-} else {
-    $tag = tag_get('name', $tagname, '*');
-}
+$tag = core_tag_tag::get_by_name(0, $tagname);
 $PAGE->set_pagelayout('standard');
-
-if ($CFG->branch >= 31) {
-    core_tag_tag::make_display_name($tag);
-} else {
-    $tagname = tag_display_name($tag);
-}
-
+core_tag_tag::make_display_name($tag);
 $title = get_string('tag', 'tag') . ' - ' . $tagname;
 
 $PAGE->navbar->add($tagname);
@@ -56,8 +42,7 @@ echo $OUTPUT->heading($tagname, 2);
 
 $records = $DB->get_records('tag_instance', array('tagid' => $tag->id, 'itemtype' => 'booking'));
 
-echo $OUTPUT->box_start('generalbox', 'tag-blogs'); // could use an id separate from tag-blogs, but would have to copy the css style to make it look
-                                                    // the same
+echo $OUTPUT->box_start('generalbox', 'tag-blogs');
 
 echo '<ul>';
 

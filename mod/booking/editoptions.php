@@ -17,7 +17,7 @@ require_once("../../config.php");
 require_once("locallib.php");
 require_once("bookingform.class.php");
 
-$id = required_param('id', PARAM_INT); // Course Module ID
+$id = required_param('id', PARAM_INT); // Course Module ID.
 $optionid = required_param('optionid', PARAM_INT);
 $copyoptionid = optional_param('copyoptionid', '', PARAM_ALPHANUM);
 $sesskey = optional_param('sesskey', '', PARAM_INT);
@@ -38,11 +38,14 @@ if (!$context = context_module::instance($cm->id)) {
     print_error('badcontext');
 }
 
-require_capability('mod/booking:updatebooking', $context);
+if ((has_capability('mod/booking:updatebooking', $context) || has_capability('mod/booking:addeditownoption', $context)) == false) {
+    print_error('nopermissions');
+}
 
-$mform = new mod_booking_bookingform_form(null, array('bookingid' => $cm->instance));
+$mform = new mod_booking_bookingform_form(null, array('bookingid' => $cm->instance, 'optionid' => $optionid));
 
 if ($optionid == -1) {
+    // Adding new booking option - default values.
     $defaultvalues = $booking->booking;
     if ($copyoptionid != '') {
         if ($defaultvalues = $DB->get_record('booking_options', array('id' => $copyoptionid))) {
@@ -53,6 +56,12 @@ if ($optionid == -1) {
                 'format' => FORMAT_HTML);
             $defaultvalues->notificationtext = array('text' => $defaultvalues->notificationtext,
                 'format' => FORMAT_HTML);
+            $defaultvalues->beforebookedtext = array('text' => $defaultvalues->beforebookedtext,
+                            'format' => FORMAT_HTML);
+            $defaultvalues->beforecompletedtext = array('text' => $defaultvalues->beforecompletedtext,
+                            'format' => FORMAT_HTML);
+            $defaultvalues->aftercompletedtext = array('text' => $defaultvalues->aftercompletedtext,
+                            'format' => FORMAT_HTML);
             if ($defaultvalues->bookingclosingtime) {
                 $defaultvalues->restrictanswerperiod = "checked";
             }
@@ -73,12 +82,28 @@ if ($optionid == -1) {
         'format' => FORMAT_HTML);
     $defaultvalues->notificationtext = array('text' => $defaultvalues->notificationtext,
         'format' => FORMAT_HTML);
+    $defaultvalues->beforebookedtext = array('text' => $defaultvalues->beforebookedtext,
+                    'format' => FORMAT_HTML);
+    $defaultvalues->beforecompletedtext = array('text' => $defaultvalues->beforecompletedtext,
+                    'format' => FORMAT_HTML);
+    $defaultvalues->aftercompletedtext = array('text' => $defaultvalues->aftercompletedtext,
+                    'format' => FORMAT_HTML);
     $defaultvalues->id = $cm->id;
     if ($defaultvalues->bookingclosingtime) {
         $defaultvalues->restrictanswerperiod = "checked";
     }
     if ($defaultvalues->coursestarttime) {
         $defaultvalues->startendtimeknown = "checked";
+    }
+
+    // Defaults for customfields.
+    $cfdefaults = $DB->get_records('booking_customfields', array('optionid' => $optionid));
+    $customfields = \mod_booking\booking_option::get_customfield_settings();
+    if (!empty($cfdefaults)) {
+        foreach ($cfdefaults as $defaultval) {
+            $cfgvalue = $defaultval->cfgname;
+            $defaultvalues->$cfgvalue = $defaultval->value;
+        }
     }
 } else {
     print_error('This booking option does not exist');
@@ -89,15 +114,19 @@ if ($mform->is_cancelled()) {
     redirect($redirecturl, '', 0);
 } else if ($fromform = $mform->get_data()) {
     // Validated data.
-    if (confirm_sesskey() && has_capability('mod/booking:updatebooking', $context)) {
+    if (confirm_sesskey() && (has_capability('mod/booking:updatebooking', $context) || has_capability('mod/booking:addeditownoption', $context))) {
         if (!isset($fromform->limitanswers)) {
             $fromform->limitanswers = 0;
         }
 
-        $nbooking = booking_update_options($fromform);
+        $nbooking = booking_update_options($fromform, $context);
 
         $bookingdata = new \mod_booking\booking_option($cm->id, $nbooking);
         $bookingdata->sync_waiting_list();
+
+        if (has_capability('mod/booking:addeditownoption', $context) && $optionid == -1 && !has_capability('mod/booking:updatebooking', $context)) {
+            booking_optionid_subscribe($USER->id, $nbooking, $cm);
+        }
 
         if (isset($fromform->submittandaddnew)) {
             $redirecturl = new moodle_url('editoptions.php',

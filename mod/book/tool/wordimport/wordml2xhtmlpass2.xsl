@@ -309,7 +309,7 @@
                 </li>
 
                 <!-- Recursively process following paragraphs until we hit one that isn't a list item -->
-                <xsl:apply-templates select="following::x:p[1]" mode="listItem">
+                <xsl:apply-templates select="following-sibling::x:p[1]" mode="listItem">
                     <xsl:with-param name="listType" select="'listnumber'"/>
                 </xsl:apply-templates>
             </ol>
@@ -329,8 +329,28 @@
                 </li>
 
                 <!-- Recursively process following paragraphs until we hit one that isn't a list item -->
-                <xsl:apply-templates select="following::x:p[1]" mode="listItem">
+                <xsl:apply-templates select="following-sibling::x:p[1]" mode="listItem">
                     <xsl:with-param name="listType" select="'listbullet'"/>
+                </xsl:apply-templates>
+            </ul>
+        </xsl:if>
+        <!-- Silently ignore the item if it is not the first -->
+    </xsl:template>
+
+    <!-- Try and handle unstyled bullet lists which use a hidden listparagraph -->
+    <xsl:template match="x:p[starts-with(@class, 'listparagraph')]">
+        <xsl:if test="not(starts-with(preceding-sibling::x:p[1]/@class, 'listparagraph'))">
+            <!-- First item in a list, so wrap it in a ul, and drag in the rest of the items -->
+            <xsl:value-of select="$debug_newline"/>
+            <ul>
+                <xsl:value-of select="$debug_newline"/>
+                <li>
+                    <xsl:apply-templates/>
+                </li>
+
+                <!-- Recursively process following paragraphs until we hit one that isn't a list item -->
+                <xsl:apply-templates select="following-sibling::x:p[1]" mode="listItem">
+                    <xsl:with-param name="listType" select="'listparagraph'"/>
                 </xsl:apply-templates>
             </ul>
         </xsl:if>
@@ -347,8 +367,9 @@
             <li>
                 <xsl:apply-templates/>
             </li>
+
                 <!-- Recursively process following paragraphs until we hit one that isn't a list item -->
-                <xsl:apply-templates select="following::x:p[1]" mode="listItem">
+                <xsl:apply-templates select="following-sibling::x:p[1]" mode="listItem">
                     <xsl:with-param name="listType" select="$listType"/>
                 </xsl:apply-templates>
         </xsl:when>
@@ -386,7 +407,7 @@
             <pre>
                 <xsl:apply-templates/>
                 <!-- Recursively process following paragraphs until we hit one that isn't a list item -->
-                <xsl:apply-templates select="following::x:p[1]" mode="preformatted"/>
+                <xsl:apply-templates select="following-sibling::x:p[1]" mode="preformatted"/>
             </pre>
         </xsl:if>
         <!-- Silently ignore the item if it is not the first -->
@@ -400,21 +421,9 @@
             <xsl:value-of select="'&#x0a;'"/>
                 <xsl:apply-templates/>
                 <!-- Recursively process following paragraphs until we hit one that isn't a pre -->
-                <xsl:apply-templates select="following::x:p[1]"  mode="preformatted"/>
+                <xsl:apply-templates select="following-sibling::x:p[1]"  mode="preformatted"/>
         </xsl:when>
         </xsl:choose>
-    </xsl:template>
-
-    <xsl:template match="x:p" mode="blockQuote">
-        <xsl:if test="starts-with(@class, 'blockquote')">
-            <xsl:value-of select="$debug_newline"/>
-            <p>
-                <xsl:apply-templates select="@*"/>
-                <xsl:apply-templates/>
-            </p>
-            <!-- Recursively process following paragraphs until we hit one that isn't a blockQuote -->
-            <xsl:apply-templates select="following::x:p[1]" mode="blockQuote"/>
-        </xsl:if>
     </xsl:template>
 
     <!-- Remove redundant style information, retaining only borders and widths on table cells, and text direction in paragraphs-->
@@ -448,6 +457,9 @@
         </xsl:variable>
 
         <xsl:choose>
+        <xsl:when test="starts-with($stylePropertyFirst, 'line-height:1;') or starts-with($stylePropertyFirst, 'line-height:1.15;')">
+            <!-- Ignore line-height if it is exactly 1 or 1.15 -->
+        </xsl:when>
         <xsl:when test="starts-with($stylePropertyFirst, 'margin-') or starts-with($stylePropertyFirst, 'page-break')">
             <!-- Ignore margin or page-break settings -->
         </xsl:when>
@@ -502,16 +514,16 @@
 
     <!-- Handle tables differently depending on the context (booktool, qformat) -->
     <xsl:template match="x:table">
-        <!-- If not in qformat and a table contains a heading in the first heading cell, then it's a textbox -->
+        <!-- If not in qformat and a table contains a heading in the first heading cell, then it's a text panel, and we use the Bootstrap panel class -->
         <xsl:variable name="tblHeadingClass" select="x:thead/x:tr[1]/x:th[1]/x:p[1]/@class"/>
-        <xsl:variable name="boxType" select="concat('box_type', substring-after($tblHeadingClass, 'heading'))"/>
+        <xsl:variable name="panelType" select="concat('panel-type', substring-after($tblHeadingClass, 'heading'))"/>
         <xsl:choose>
         <xsl:when test="starts-with($tblHeadingClass, 'heading') and ($pluginname != 'qformat_wordtable')">
-            <div class="{concat($boxType, '_wrapper')}">
-                <div class="{concat($boxType, '_head')}">
+            <div class="{concat('panel ', $panelType)}">
+                <div class="panel-heading">
                     <xsl:apply-templates select="x:thead/x:tr[1]/x:th[1]/x:p"/>
                 </div>
-                <div class="{concat($boxType, '_body')}">
+                <div class="panel-body">
                     <xsl:apply-templates select="x:tbody/x:tr[1]/x:td[1]/node()"/>
                 </div>
             </div>
@@ -617,15 +629,64 @@
 
     <!-- Block quotes - wrap them in a blockquote wrapper -->
     <xsl:template match="x:p[@class = 'blockquote' or @class = 'block quote']">
+        <xsl:variable name="paraClass" select="@class"/>
         <xsl:if test="not(starts-with(preceding-sibling::x:p[1]/@class, 'blockquote'))">
             <blockquote>
                 <p>
-                    <xsl:apply-templates select="@*"/>
+                    <xsl:for-each select="@*">
+                        <xsl:if test="name() != 'class'">
+                            <xsl:apply-templates select="."/>
+                        </xsl:if>
+                    </xsl:for-each>
                     <xsl:apply-templates/>
                 </p>
-                <!-- Recursively process following paragraphs until we hit one that isn't a block quote -->
-                <xsl:apply-templates select="following::x:p[1]" mode="blockQuote"/>
+                <!-- Recursively process following paragraphs until we hit one that isn't the same as this one -->
+                <xsl:apply-templates select="following-sibling::x:p[1]" mode="paraClassSequence">
+                    <xsl:with-param name="paraClass" select="$paraClass"/>
+                </xsl:apply-templates>
             </blockquote>
+        </xsl:if>
+    </xsl:template>
+
+    <!-- Bootstrap framework alerts - wrap them in a div/@class="alert" wrapper -->
+    <xsl:template match="x:p[@class = 'danger' or @class = 'info' or @class = 'success' or @class = 'warning']">
+        <xsl:variable name="paraClass" select="@class"/>
+        <xsl:if test="not(starts-with(preceding-sibling::x:p[1]/@class, $paraClass))">
+            <div class="{concat('alert alert-', $paraClass)}">
+                <p>
+                    <xsl:for-each select="@*">
+                        <xsl:if test="name() != 'class'">
+                            <xsl:apply-templates select="."/>
+                        </xsl:if>
+                    </xsl:for-each>
+                    <xsl:apply-templates/>
+                </p>
+                <!-- Recursively process following paragraphs until we hit one that isn't the same as this one -->
+                <xsl:apply-templates select="following-sibling::x:p[1]" mode="paraClassSequence">
+                    <xsl:with-param name="paraClass" select="$paraClass"/>
+                </xsl:apply-templates>
+            </div>
+        </xsl:if>
+    </xsl:template>
+
+    <xsl:template match="x:p" mode="paraClassSequence">
+        <xsl:param name="paraClass"/>
+
+        <!-- Process this paragraph if it has the same class as the last one -->
+        <xsl:if test="starts-with(@class, $paraClass)">
+            <xsl:value-of select="$debug_newline"/>
+            <p>
+                <xsl:for-each select="@*">
+                    <xsl:if test="name() != 'class'">
+                        <xsl:apply-templates select="."/>
+                    </xsl:if>
+                </xsl:for-each>
+                <xsl:apply-templates/>
+            </p>
+            <!-- Recursively process following paragraphs until we hit one that isn't the same as this one -->
+            <xsl:apply-templates select="following-sibling::x:p[1]" mode="paraClassSequence">
+                <xsl:with-param name="paraClass" select="$paraClass"/>
+            </xsl:apply-templates>
         </xsl:if>
     </xsl:template>
 

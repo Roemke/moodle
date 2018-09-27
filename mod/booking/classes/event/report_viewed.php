@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
 /**
  * The mod_booking report viewed event.
  *
@@ -71,8 +70,7 @@ class report_viewed extends \core\event\base {
      * @return \moodle_url
      */
     public function get_url() {
-        return new \moodle_url('/mod/booking/report.php',
-                array('id' => $this->contextinstanceid, 'optionid' => $this->objectid));
+        return new \moodle_url('/mod/booking/report.php', array('id' => $this->contextinstanceid, 'optionid' => $this->objectid));
     }
 
     /**
@@ -83,7 +81,6 @@ class report_viewed extends \core\event\base {
     protected function get_legacy_logdata() {
         $url = new \moodle_url('report.php',
                 array('id' => $this->contextinstanceid, 'optionid' => $this->objectid));
-        return array($this->courseid, 'choose', 'report', $url->out(), $this->objectid,
-            $this->contextinstanceid);
+        return array($this->courseid, 'choose', 'report', $url->out(), $this->objectid, $this->contextinstanceid);
     }
 }

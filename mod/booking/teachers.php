@@ -76,7 +76,8 @@ if ($edit === 0) {
                 redirect($url, get_string('selectatleastoneuser', 'booking'), 5);
             }
 
-            booking_activitycompletion_teachers($selectedusers, $booking->booking, $cm->id, $optionid);
+            booking_activitycompletion_teachers($selectedusers, $booking->booking, $cm->id,
+                    $optionid);
             redirect($url, get_string('activitycompletionsuccess', 'booking'), 5);
         }
     }
@@ -84,6 +85,7 @@ if ($edit === 0) {
     require_sesskey();
     $subscribe = (bool) optional_param('subscribe', false, PARAM_RAW);
     $unsubscribe = (bool) optional_param('unsubscribe', false, PARAM_RAW);
+    $addtogroup = optional_param('addtogroup', false, PARAM_RAW);
     // It has to be one or the other, not both or neither
     if (!($subscribe xor $unsubscribe)) {
         print_error('invalidaction');
@@ -91,14 +93,14 @@ if ($edit === 0) {
     if ($subscribe) {
         $users = $subscriberselector->get_selected_users();
         foreach ($users as $user) {
-            if (!booking_optionid_subscribe($user->id, $optionid)) {
+            if (!booking_optionid_subscribe($user->id, $optionid, $cm, $addtogroup)) {
                 print_error('cannotaddsubscriber', 'booking', '', $user->id);
             }
         }
     } else if ($unsubscribe) {
         $users = $existingselector->get_selected_users();
         foreach ($users as $user) {
-            if (!booking_optionid_unsubscribe($user->id, $optionid)) {
+            if (!booking_optionid_unsubscribe($user->id, $optionid, $cm)) {
                 print_error('cannotremovesubscriber', 'booking', '', $user->id);
             }
         }
@@ -125,11 +127,9 @@ if (has_capability('mod/booking:updatebooking', $context)) {
 }
 echo $output->header();
 if ($edit === 1) {
-    echo $output->heading(
-            get_string('addteachers', 'booking') . " [{$booking->option->text}]");
+    echo $output->heading(get_string('addteachers', 'booking') . " [{$booking->option->text}]");
 } else {
-    echo $output->heading(
-            get_string('teachers', 'booking') . " [{$booking->option->text}]");
+    echo $output->heading(get_string('teachers', 'booking') . " [{$booking->option->text}]");
 }
 
 echo html_writer::link(
@@ -140,6 +140,6 @@ echo '<br>';
 if (empty($USER->subscriptionsediting)) {
     $mform->display();
 } else {
-    echo $output->subscriber_selection_form($existingselector, $subscriberselector);
+    echo $output->subscriber_selection_form($existingselector, $subscriberselector, $course->id);
 }
 echo $output->footer();

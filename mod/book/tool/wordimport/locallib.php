@@ -24,8 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die;
 // Development: turn on all debug messages and strict warnings.
-// @codingStandardsIgnoreLine define('DEBUG_WORDIMPORT', E_ALL);
-define('DEBUG_WORDIMPORT', 0);
+define('DEBUG_WORDIMPORT', E_ALL);
+// @codingStandardsIgnoreLine define('DEBUG_WORDIMPORT', 0);
 
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/xslemulatexslt.inc');
@@ -38,6 +38,7 @@ if (!function_exists('create_module')) {        // Moodle <= 2.4.
     /**
      * Define dummy create_module function for Moodle 2.3
      *
+     * @param array $data
      * @return null
      */
     function create_module($data) {
@@ -55,12 +56,13 @@ if (!function_exists('create_module')) {        // Moodle <= 2.4.
  * @return void
  */
 function booktool_wordimport_import_word($wordfilename, $book, $context, $splitonsubheadings) {
+    global $CFG;
     // Convert the Word file content into XHTML and an array of images.
     $imagesforzipping = array();
     $htmlcontent = booktool_wordimport_convert_to_xhtml($wordfilename, $imagesforzipping);
 
     // Create a temporary Zip file to store the HTML and images for feeding to import function.
-    $zipfilename = dirname($wordfilename) . DIRECTORY_SEPARATOR . basename($wordfilename, ".tmp") . ".zip";
+    $zipfilename = $CFG->tempdir . DIRECTORY_SEPARATOR . basename($wordfilename, ".tmp") . ".zip";
     $zipfile = new ZipArchive;
     if (!($zipfile->open($zipfilename, ZipArchive::CREATE))) {
         // Cannot open zip file.
@@ -77,19 +79,21 @@ function booktool_wordimport_import_word($wordfilename, $book, $context, $splito
     // Split the single HTML file into multiple chapters based on h1 elements.
     $h1matches = null;
     $chaptermatches = null;
-    // Grab title and contents of each section.
+    // Grab title and contents of each 'Heading 1' section, which is mapped to h3.
     $chaptermatches = preg_split('#<h3>.*</h3>#isU', $htmlcontent);
     preg_match_all('#<h3>(.*)</h3>#i', $htmlcontent, $h1matches);
     // @codingStandardsIgnoreLine debugging(__FUNCTION__ . ":" . __LINE__ . ": n chapters = " . count($chaptermatches), DEBUG_WORDIMPORT);
 
-    // If no h1 elements are present, treat the whole file as a single chapter.
+    // If no h3 elements are present, treat the whole file as a single chapter.
     if (count($chaptermatches) == 1) {
         $zipfile->addFromString("index.htm", $htmlcontent);
     }
 
     // Create a separate HTML file in the Zip file for each section of content.
     for ($i = 1; $i < count($chaptermatches); $i++) {
-        $chaptitle = $h1matches[1][$i - 1];
+        // Remove any tags from heading, as it prevents proper import of the chapter title.
+        $chaptitle = strip_tags($h1matches[1][$i - 1]);
+        // @codingStandardsIgnoreLine debugging(__FUNCTION__ . ":" . __LINE__ . ": chaptitle = " . $chaptitle, DEBUG_WORDIMPORT);
         $chapcontent = $chaptermatches[$i];
         $chapfilename = sprintf("index%02d.htm", $i);
 
@@ -115,7 +119,7 @@ function booktool_wordimport_import_word($wordfilename, $book, $context, $splito
 
             // Save each subsection to a separate file.
             for ($j = 1; $j < count($subchaptermatches); $j++) {
-                $subchaptitle = $h2matches[1][$j - 1];
+                $subchaptitle = strip_tags($h2matches[1][$j - 1]);
                 $subchapcontent = $subchaptermatches[$j];
                 $subsectionfilename = sprintf("index%02d_%02d_sub.htm", $i, $j);
                 $htmlfilecontent = "<html><head><title>{$subchaptitle}</title></head>" .
@@ -166,7 +170,6 @@ function booktool_wordimport_delete_files($context) {
  * steps to convert it into XHTML files
  *
  * @param string $filename Word file
- * @param bool $splitonsubheadings split file by 'Heading 2' style into separate HTML chunks
  * @param array $imagesforzipping array to store embedded image files
  * @return string XHTML content extracted from Word file and split into files
  */
@@ -191,8 +194,8 @@ function booktool_wordimport_convert_to_xhtml($filename, &$imagesforzipping) {
         throw new moodle_exception(get_string('extensionrequired', 'tool_xmldb', 'xsl'));
     }
 
-    // Give XSLT as much memory as possible, to enable larger Word files to be imported.
-    raise_memory_limit(MEMORY_HUGE);
+    // Uncomment next line to give XSLT as much memory as possible, to enable larger Word files to be imported.
+    // @codingStandardsIgnoreLine raise_memory_limit(MEMORY_HUGE);
 
     if (!file_exists($word2xmlstylesheet1)) {
         // XSLT stylesheet to transform WordML into XHTML is missing.
@@ -261,12 +264,9 @@ function booktool_wordimport_convert_to_xhtml($filename, &$imagesforzipping) {
                 case "word/_rels/footnotes.xml.rels":
                     $wordmldata .= "<footnoteLinks>" . $xmlfiledata . "</footnoteLinks>\n";
                     break;
-                /* @codingStandardsIgnoreStart
-                case "word/_rels/settings.xml.rels":
-                    $wordmldata .= "<settingsLinks>" . $xmlfiledata . "</settingsLinks>\n";
-                    break;
-                    @codingStandardsIgnoreEnd
-                */
+                // @codingStandardsIgnoreLine case "word/_rels/settings.xml.rels":
+                    // @codingStandardsIgnoreLine $wordmldata .= "<settingsLinks>" . $xmlfiledata . "</settingsLinks>\n";
+                    // @codingStandardsIgnoreLine break;
                 default:
                     // @codingStandardsIgnoreLine debugging(__FUNCTION__ . ":" . __LINE__ . ": Ignore $zefilename", DEBUG_WORDIMPORT);
             }
@@ -281,7 +281,7 @@ function booktool_wordimport_convert_to_xhtml($filename, &$imagesforzipping) {
 
     // Pass 1 - convert WordML into linear XHTML.
     // Create a temporary file to store the merged WordML XML content to transform.
-    $tempwordmlfilename = $CFG->dataroot . '/temp/' . basename($filename, ".tmp") . ".wml";
+    $tempwordmlfilename = $CFG->tempdir . DIRECTORY_SEPARATOR . basename($filename, ".tmp") . ".wml";
     if ((file_put_contents($tempwordmlfilename, $wordmldata)) == 0) {
         // Cannot save the file.
         throw new moodle_exception('cannotsavefile', 'error', $tempwordmlfilename);
@@ -298,7 +298,7 @@ function booktool_wordimport_convert_to_xhtml($filename, &$imagesforzipping) {
     // @codingStandardsIgnoreLine     str_replace("\n", "", substr($xsltoutput, 0, 200)), DEBUG_WORDIMPORT);
 
     // Write output of Pass 1 to a temporary file, for use in Pass 2.
-    $tempxhtmlfilename = $CFG->dataroot . '/temp/' . basename($filename, ".tmp") . ".if1";
+    $tempxhtmlfilename = $CFG->tempdir . DIRECTORY_SEPARATOR . basename($filename, ".tmp") . ".if1";
     $xsltoutput = str_replace('<p xmlns="http://www.w3.org/1999/xhtml"', '<p', $xsltoutput);
     $xsltoutput = str_replace('<span xmlns="http://www.w3.org/1999/xhtml"', '<span', $xsltoutput);
     $xsltoutput = str_replace(' xmlns=""', '', $xsltoutput);
@@ -331,7 +331,7 @@ function booktool_wordimport_convert_to_xhtml($filename, &$imagesforzipping) {
 
     // Keep the converted XHTML file for debugging if developer debugging enabled.
     if (DEBUG_WORDIMPORT == DEBUG_DEVELOPER and debugging(null, DEBUG_DEVELOPER)) {
-        $tempxhtmlfilename = $CFG->dataroot . '/temp/' . basename($filename, ".tmp") . ".xhtml";
+        $tempxhtmlfilename = $CFG->tempdir . DIRECTORY_SEPARATOR . basename($filename, ".tmp") . ".xhtml";
         file_put_contents($tempxhtmlfilename, $xsltoutput);
     }
 
@@ -377,15 +377,15 @@ function booktool_wordimport_export( $content ) {
     }
 
     // Get a temporary file name for storing the book/chapter XHTML content to transform.
-    if (!($tempxmlfilename = tempnam($CFG->dataroot . '/temp/', "b2w-"))) {
+    if (!($tempxmlfilename = tempnam($CFG->tempdir . DIRECTORY_SEPARATOR, "b2w-"))) {
         echo $OUTPUT->notification(get_string('cannotopentempfile', 'booktool_wordimport', basename($tempxmlfilename)));
         return false;
     }
     unlink($tempxmlfilename);
-    $tempxhtmlfilename = $CFG->dataroot . '/temp/' . basename($tempxmlfilename, ".tmp") . ".xhtm";
+    $tempxhtmlfilename = $CFG->tempdir . DIRECTORY_SEPARATOR . basename($tempxmlfilename, ".tmp") . ".xhtm";
 
-    // Maximise memory available so that very large files can be exported.
-    raise_memory_limit(MEMORY_HUGE);
+    // Uncomment next line to give XSLT as much memory as possible, to enable larger Word files to be exported.
+    // @codingStandardsIgnoreLine raise_memory_limit(MEMORY_HUGE);
 
     $cleancontent = booktool_wordimport_clean_html_text($content);
 

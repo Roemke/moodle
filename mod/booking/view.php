@@ -18,6 +18,7 @@ require_once("locallib.php");
 require_once($CFG->libdir . '/completionlib.php');
 require_once("{$CFG->libdir}/tablelib.php");
 require_once("{$CFG->dirroot}/mod/booking/classes/all_options.php");
+require_once($CFG->dirroot . '/comment/lib.php');
 
 $id = required_param('id', PARAM_INT); // Course Module ID
 $action = optional_param('action', '', PARAM_ALPHA);
@@ -126,9 +127,10 @@ if ($sorto == 1) {
 $url = new moodle_url('/mod/booking/view.php', $urlparams);
 $urlcancel = new moodle_url('/mod/booking/view.php', array('id' => $id));
 $sorturl = new moodle_url('/mod/booking/view.php', $urlparamssort);
+$sorturl->set_anchor('goenrol');
 
 $PAGE->set_url($url);
-$PAGE->requires->yui_module('moodle-mod_booking-viewscript', 'M.mod_booking.viewscript.init');
+$PAGE->requires->js_call_amd('mod_booking/view_actions', 'setup', array($id));
 
 $booking->apply_tags();
 $booking->get_url_params();
@@ -152,13 +154,19 @@ if ($action == 'delbooking' and confirm_sesskey() && $confirm == 1 and
         echo $OUTPUT->box($contents, 'box generalbox', 'notice');
         echo $OUTPUT->footer();
         die();
+    } else {
+        echo $OUTPUT->header();
+        $contents = get_string('cannotremovesubscriber', 'booking');
+        $options = array('id' => $cm->id);
+        $contents .= $OUTPUT->single_button(new moodle_url('view.php', $options),
+                get_string('continue'), 'get');
+        echo $OUTPUT->box($contents, 'box generalbox', 'notice');
+        echo $OUTPUT->footer();
+        die();
     }
 } else if ($action == 'delbooking' and confirm_sesskey() and
          has_capability('mod/booking:choose', $context) and
-         ($booking->booking->allowupdate or has_capability('mod/booking:deleteresponses', $context))) { // print
-                                                                                                       // confirm
-                                                                                                       // delete
-                                                                                                       // form
+         ($booking->booking->allowupdate or has_capability('mod/booking:deleteresponses', $context))) {
     echo $OUTPUT->header();
 
     $bookingdata = new \mod_booking\booking_option($cm->id, $optionid);
@@ -182,7 +190,7 @@ if ($action == 'delbooking' and confirm_sesskey() && $confirm == 1 and
     die();
 }
 
-// before processing data user has to agree to booking policy and confirm booking
+// Before processing data user has to agree to booking policy and confirm booking.
 if ($form = data_submitted() && has_capability('mod/booking:choose', $context) && $download == '' &&
          confirm_sesskey() && $confirm != 1 && $answer) {
     booking_confirm_booking($answer, $USER, $cm, $url);
@@ -192,14 +200,13 @@ if ($form = data_submitted() && has_capability('mod/booking:choose', $context) &
 $PAGE->set_title(format_string($booking->booking->name));
 $PAGE->set_heading($booking->booking->name);
 
-// Submit any new data if there is any
+// Submit any new data if there is any.
 if ($download == '' && $form = data_submitted() && has_capability('mod/booking:choose', $context)) {
     echo $OUTPUT->header();
     $timenow = time();
 
     $url = new moodle_url("view.php", array('id' => $cm->id));
     $url->set_anchor("option" . $answer);
-
     if (!empty($answer)) {
         $bookingdata = new \mod_booking\booking_option($cm->id, $answer, array(), 0, 0, false);
         $bookingdata->apply_tags();
@@ -208,21 +215,22 @@ if ($download == '' && $form = data_submitted() && has_capability('mod/booking:c
             if ($booking->booking->sendmail) {
                 $contents .= "<br />" . get_string('mailconfirmationsent', 'booking') . ".";
             }
-            $contents .= $OUTPUT->single_button($url, get_string('continue'), 'get');
+            $contents .= $OUTPUT->single_button($url,
+                    get_string('continue'), 'get');
             echo $OUTPUT->box($contents, 'box generalbox', 'notice');
             echo $OUTPUT->footer();
             die();
-        } else if (is_int($answer)) {
-            $contents = get_string('bookingmeanwhilefull', 'booking') . " " .
-                     $bookingdata->option->text;
-            $contents .= $OUTPUT->single_button($url, 'get');
+        } else if (is_numeric($answer)) {
+            $contents = get_string('bookingmeanwhilefull', 'booking') . " " . $bookingdata->option->text;
+            $contents .= $OUTPUT->single_button($url,
+                    get_string('continue'), 'get');
             echo $OUTPUT->box($contents, 'box generalbox', 'notice');
             echo $OUTPUT->footer();
             die();
         }
     } else {
         $contents = get_string('nobookingselected', 'booking');
-        $contents .= $OUTPUT->single_button($url, 'get');
+        $contents .= $OUTPUT->single_button($url, get_string('continue'));
         echo $OUTPUT->box($contents, 'box generalbox', 'notice');
         echo $OUTPUT->footer();
         die();
@@ -243,9 +251,8 @@ $myoptions = $DB->get_record_sql(
         "SELECT COUNT(*) AS myoptions FROM {booking_teachers} WHERE userid = :userid AND bookingid = :bookingid",
         array('userid' => $USER->id, 'bookingid' => $booking->id));
 
-$current = false; // Initialise for later
-                  // if user has already made a selection, show their selected answer.
-                  // Print the form
+// Initialise for later if user has already made a selection, show the selected answer.
+$current = false;
 $bookingopen = true;
 $timenow = time();
 
@@ -291,7 +298,7 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
     $tablealloptions = new all_options('mod_booking_all_options', $booking, $cm, $context);
     $tablealloptions->is_downloading($download, $booking->booking->name, $booking->booking->name);
 
-    $tablealloptions->define_baseurl($url);
+    $tablealloptions->define_baseurl($sorturl);
     $tablealloptions->defaultdownloadformat = 'ods';
     if (has_capability('mod/booking:downloadresponses', $context)) {
         $tablealloptions->is_downloadable(true);
@@ -363,27 +370,9 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
             echo html_writer::tag('span', implode(', ', $out));
             echo html_writer::end_tag('div');
         }
-
         if (!empty($CFG->usetags)) {
-            if ($CFG->branch >= 31) {
-                $tags = core_tag_tag::get_item_tags('mod_booking', 'booking', $booking->booking->id);
-                echo $OUTPUT->tag_list($tags, null, 'booking-tags');
-            } else {
-                $tags = tag_get_tags_array('booking', $booking->booking->id);
-                $links = array();
-                foreach ($tags as $tagid => $tag) {
-                    $turl = new moodle_url('tag.php', array('id' => $id, 'tag' => $tag));
-                    $links[] = html_writer::link($turl, $tag, array());
-                }
-
-                if (!empty($tags)) {
-                    echo html_writer::start_tag('div');
-                    echo html_writer::tag('label', get_string('tags') . ': ',
-                            array('class' => 'bold'));
-                    echo html_writer::tag('span', implode(', ', $links));
-                    echo html_writer::end_tag('div');
-                }
-            }
+            $tags = core_tag_tag::get_item_tags('mod_booking', 'booking', $booking->booking->id);
+            echo $OUTPUT->tag_list($tags, null, 'booking-tags');
         }
 
         if ($booking->booking->categoryid != '0' && $booking->booking->categoryid != '') {
@@ -438,7 +427,7 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
             }
         }
 
-        echo $OUTPUT->box(booking_show_maxperuser($booking, $USER), 'box mdl-align');
+        echo $OUTPUT->box($booking->show_maxperuser($USER), 'box mdl-align');
 
         $output = $PAGE->get_renderer('mod_booking');
         $output->print_booking_tabs($urlparams, $whichview, $mybookings->mybookings,
@@ -460,8 +449,7 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
 
         $labelbooking = (empty($booking->booking->lblbooking) ? get_string('booking', 'booking') : $booking->booking->lblbooking);
         $labellocation = (empty($booking->booking->lbllocation) ? get_string('location', 'booking') : $booking->booking->lbllocation);
-        $labelinstitution = (empty($booking->booking->lblinstitution) ? get_string('institution',
-                'booking') : $booking->booking->lblinstitution);
+        $labelinstitution = (empty($booking->booking->lblinstitution) ? get_string('institution') : $booking->booking->lblinstitution);
         $labelsearchname = (empty($booking->booking->lblname) ? get_string('searchname', 'booking') : $booking->booking->lblname);
         $labelsearchsurname = (empty($booking->booking->lblsurname) ? get_string('searchsurname',
                 'booking') : $booking->booking->lblsurname);
@@ -509,24 +497,45 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
         $table->head = array('', '', '', '');
         $table->data = $tabledata;
         $table->id = "tableSearch";
-
+        $table->attributes['class'] = "table table-striped ";
         if (empty($urlparams['searchtext']) && empty($urlparams['searchlocation']) &&
                  empty($urlparams['searchname']) && empty($urlparams['searchinstitution']) &&
                  empty($urlparams['searchsurname'])) {
-            $table->attributes = array('style' => "display: none;");
+            $table->attributes['style'] = "display: none;";
         }
         echo html_writer::tag('form', html_writer::table($table));
 
-        $sorturl->set_anchor('goenrol');
+        $optionsfields = explode(',', $booking->booking->optionsfields);
 
-        $columns[] = 'text';
-        $headers[] = get_string("select", "mod_booking");
-        $columns[] = 'coursestarttime';
-        $headers[] = get_string("coursedate", "mod_booking");
-        $columns[] = 'maxanswers';
-        $headers[] = get_string("availability", "mod_booking");
+        foreach ($optionsfields as $value) {
+            switch ($value) {
+                case 'text':
+                    $columns[] = 'text';
+                    $headers[] = get_string("select", "mod_booking");
+                    break;
+                case 'coursestarttime':
+                    $columns[] = 'coursestarttime';
+                    $headers[] = get_string("coursedate", "mod_booking");
+                    break;
+                case 'maxanswers':
+                    $columns[] = 'maxanswers';
+                    $headers[] = get_string("availability", "mod_booking");
+                    break;
+            }
+        }
+
         $columns[] = 'id';
         $headers[] = "";
+        $usersofgroupsql = '';
+        if (groups_get_activity_groupmode($cm) == SEPARATEGROUPS AND !has_capability('moodle/site:accessallgroups', \context_course::instance($course->id))) {
+            list ($groupsql, $groupparams) = \mod_booking\booking::booking_get_groupmembers_sql($course->id);
+            $conditionsparams = array_merge($conditionsparams, $groupparams);
+            $usersofgroupsql = "
+                (SELECT COUNT(*)
+                   FROM {booking_answers} ba
+                  WHERE ba.optionid = bo.id
+                    AND ba.userid IN ( $groupsql )) AS allbookedsamegroup,";
+        }
 
         $fields = "DISTINCT bo.id,
                          bo.text,
@@ -543,6 +552,8 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
                    WHERE ba.optionid = bo.id
                      AND ba.waitinglist = 0) AS booked,
 
+                          $usersofgroupsql
+
                   (SELECT COUNT(*)
                    FROM {booking_answers} ba
                    WHERE ba.optionid = bo.id
@@ -557,6 +568,12 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
                          b.allowupdate,
                          bo.bookingclosingtime,
                          b.btncancelname,
+
+                  (SELECT COUNT(*)
+                   FROM {booking_answers} ba
+                   WHERE ba.optionid = bo.id
+                     AND ba.completed = 1
+                     AND ba.userid = :userid4) AS completed,
 
                   (SELECT DISTINCT(ba.waitinglist)
                    FROM {booking_answers} ba
@@ -575,7 +592,20 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
                   (SELECT COUNT(*)
                    FROM {booking_teachers} ba
                    WHERE ba.optionid = bo.id
-                     AND ba.userid = :userid3) AS isteacher
+                     AND ba.userid = :userid3) AS isteacher,
+
+                  (SELECT AVG(rate)
+                   FROM {booking_ratings} br
+                  WHERE br.optionid = bo.id) AS rating,
+
+                  (SELECT COUNT(*)
+                   FROM {booking_ratings} br
+                  WHERE br.optionid = bo.id) AS ratingcount,
+
+                  (SELECT rate
+                  FROM {booking_ratings} br
+                  WHERE br.optionid = bo.id
+                    AND br.userid = :userid5) AS myrating
                 ";
         $from = '{booking} b ' . 'LEFT JOIN {booking_options} bo ON bo.bookingid = b.id';
         $where = "b.id = :bookingid " .
@@ -585,6 +615,8 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
         $conditionsparams['userid1'] = $USER->id;
         $conditionsparams['userid2'] = $USER->id;
         $conditionsparams['userid3'] = $USER->id;
+        $conditionsparams['userid4'] = $USER->id;
+        $conditionsparams['userid5'] = $USER->id;
         $conditionsparams['bookingid'] = $booking->booking->id;
 
         $tablealloptions->set_sql($fields, $from, $where, $conditionsparams);
@@ -600,13 +632,13 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
         $tablealloptions->setup();
         $tablealloptions->query_db($paging, true);
 
-        // Prepare rawdata for adding teachers and times
+        // Prepare rawdata for adding teachers and times.
         foreach ($tablealloptions->rawdata as $optionid => $option) {
             $option->times = null;
             $option->teachers = "";
         }
 
-        // Add teachers to rawdata
+        // Add teachers to rawdata.
         $teachers = array();
         $tachernamesql = $DB->sql_fullname('u.firstname', 'u.lastname');
         $bookingoptionids = array_keys($tablealloptions->rawdata);
@@ -675,64 +707,29 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
 
         $customfields = '';
 
-        $columns[] = 'optionid';
-        $headers[] = get_string("optionid", "booking");
-        $columns[] = 'booking';
-        $headers[] = get_string("booking", "booking");
-        if (has_capability('moodle/site:viewuseridentity', $context)) {
-            $columns[] = 'institution';
-            $headers[] = get_string("institution", "booking");
-        }
-        $columns[] = 'location';
-        $headers[] = get_string("location", "booking");
-        $columns[] = 'coursestarttime';
-        $headers[] = get_string("coursestarttime", "booking");
-        $columns[] = 'courseendtime';
-        $headers[] = get_string("courseendtime", "booking");
-        if ($booking->booking->numgenerator) {
-            $columns[] = 'numrec';
-            $headers[] = get_string("numrec", "booking");
-        }
-        $columns[] = 'userid';
-        $headers[] = get_string("userid", "booking");
-        $columns[] = 'username';
-        $headers[] = get_string("username");
-        $columns[] = 'firstname';
-        $headers[] = get_string("firstname");
-        $columns[] = 'lastname';
-        $headers[] = get_string("lastname");
-        $columns[] = 'email';
-        $headers[] = get_string("email");
-        $columns[] = 'completed';
-        $headers[] = get_string("searchfinished", "booking");
-        $columns[] = 'waitinglist';
-        $headers[] = get_string("waitinglist", "booking");
+        list($columns, $headers, $userprofilefields) = $booking->get_fields();
 
-        $addfields = explode(',', $booking->booking->additionalfields);
-        $addquoted = "'" . implode("','", $addfields) . "'";
-        if ($userprofilefields = $DB->get_records_select('user_info_field',
-                'id > 0 AND shortname IN (' . $addquoted . ')', array(), 'id', 'id, shortname, name')) {
+        if ($userprofilefields) {
             foreach ($userprofilefields as $profilefield) {
                 $columns[] = "cust" . strtolower($profilefield->shortname);
                 $headers[] = $profilefield->name;
-                $customfields .= ", (SELECT " . $DB->sql_concat('uif.datatype', "'|'", 'uid.data') .
-                         " as custom
-                         FROM {user_info_data} uid
-                         LEFT JOIN {user_info_field} uif ON uid.fieldid = uif.id
-                         WHERE userid = tba.userid AND uif.shortname = '{$profilefield->shortname}') AS cust" .
-                         strtolower($profilefield->shortname);
+                $customfields .= ", (SELECT " . $DB->sql_concat('uif.datatype', "'|'", 'uid.data') . " as custom
+                FROM {user_info_data} uid
+                LEFT JOIN {user_info_field}  uif ON uid.fieldid = uif.id
+                WHERE userid = tba.userid
+                AND uif.shortname = '{$profilefield->shortname}') AS cust" .
+                strtolower($profilefield->shortname);
             }
-        }
-        $columns[] = 'groups';
-        $headers[] = get_string("group");
-        if ($DB->count_records_select('user', ' idnumber <> \'\'') > 0 && has_capability('moodle/site:viewuseridentity', $context)) {
-            $columns[] = 'idnumber';
-            $headers[] = get_string("idnumber");
         }
 
         if ($myoptions->myoptions > 0 && !has_capability('mod/booking:readresponses', $context)) {
             $conditionsparams['onlyinstitution1'] = $USER->institution;
             $conditions[] = 'tu.institution LIKE :onlyinstitution1';
+        }
+        if (groups_get_activity_groupmode($cm) == SEPARATEGROUPS AND !has_capability('moodle/site:accessallgroups', \context_course::instance($course->id))) {
+            list ($groupsql, $groupparams) = \mod_booking\booking::booking_get_groupmembers_sql($course->id);
+            array_push($conditions, "tu.id IN ($groupsql)");
+            $conditionsparams = array_merge($conditionsparams, $groupparams);
         }
 
         $fields = "tba.id,
@@ -749,6 +746,7 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
                         tu.username AS username,
                         tu.email AS email,
                         tba.completed AS completed,
+                        tba.status,
                         tba.numrec,
                         otherbookingoption.text AS otheroptions,
                         tba.waitinglist AS waitinglist,
@@ -786,8 +784,8 @@ if (!$current and $bookingopen and has_capability('mod/booking:choose', $context
                 $groups = groups_get_user_groups($course->id, $option->userid);
                 if (!empty($groups[0])) {
                     $groupids = implode(',', $groups[0]);
-                    $groupnames = $DB->get_fieldset_select('groups', 'name',
-                            ' id IN (' . $groupids . ')');
+                    list($groupids, $groupidsparams) = $DB->get_in_or_equal($groups[0]);
+                    $groupnames = $DB->get_fieldset_select('groups', 'name', " id $groupids", $groupidsparams);
                     $option->groups = implode(', ', $groupnames);
                 }
             }

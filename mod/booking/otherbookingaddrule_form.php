@@ -28,7 +28,7 @@ class otherbookingaddrule_form extends moodleform {
      * @see moodleform::definition()
      */
     public function definition() {
-        global $CFG, $DB;
+        global $DB;
 
         $bookingoptions = $DB->get_records_sql(
                 "SELECT id, text
@@ -46,15 +46,15 @@ class otherbookingaddrule_form extends moodleform {
             $bookingoptionsarray[$value->id] = $value->text;
         }
 
-        $mform = $this->_form; // Don't forget the underscore!
+        $mform = $this->_form;
 
         $mform->addElement('select', 'otheroptionid',
                 get_string('selectoptioninotherbooking', 'booking'), $bookingoptionsarray);
-        $mform->setType('otheroptionid', PARAM_INT); // Set type of element
+        $mform->setType('otheroptionid', PARAM_INT);
         $mform->addRule('otheroptionid', null, 'required', null, 'client');
 
         $mform->addElement('text', 'userslimit', get_string('otherbookinglimit', 'booking'), null,
-                null); // Add elements to your form
+                null);
         $mform->setType('userslimit', PARAM_INT);
         $mform->addRule('userslimit', null, 'numeric', null, 'client');
         $mform->addHelpButton('userslimit', 'otherbookinglimit', 'mod_booking');

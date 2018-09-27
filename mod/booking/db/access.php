@@ -44,9 +44,19 @@
 //
 // For the core capabilities, the variable is $moodle_capabilities.
 $capabilities = array(
+    'mod/booking:comment' => array('riskbitmask' => RISK_SPAM, 'captype' => 'write',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array('student' => CAP_ALLOW, 'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW, 'manager' => CAP_ALLOW)),
+    'mod/booking:managecomments' => array('riskbitmask' => RISK_SPAM, 'captype' => 'write',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array('teacher' => CAP_ALLOW, 'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW)),
     'mod/booking:choose' => array('captype' => 'write', 'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array('student' => CAP_ALLOW, 'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW)),
+    'mod/booking:addeditownoption' => array('captype' => 'write', 'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array('editingteacher' => CAP_ALLOW)),
     'mod/booking:readresponses' => array('captype' => 'read', 'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array('teacher' => CAP_ALLOW, 'editingteacher' => CAP_ALLOW)),
     'mod/booking:deleteresponses' => array('captype' => 'write', 'contextlevel' => CONTEXT_MODULE,
@@ -55,7 +65,7 @@ $capabilities = array(
         'archetypes' => array('teacher' => CAP_ALLOW, 'editingteacher' => CAP_ALLOW)),
     'mod/booking:downloadresponses' => array('captype' => 'read', 'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array('teacher' => CAP_ALLOW, 'editingteacher' => CAP_ALLOW)),
-    'mod/booking:subscribeusers' => array('captype' => 'read', 'contextlevel' => CONTEXT_MODULE,
+    'mod/booking:subscribeusers' => array('captype' => 'write', 'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array('teacher' => CAP_ALLOW, 'editingteacher' => CAP_ALLOW)),
     'mod/booking:addinstance' => array('riskbitmask' => RISK_XSS, 'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,

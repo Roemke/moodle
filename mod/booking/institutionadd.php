@@ -48,7 +48,7 @@ $redirecturl = new moodle_url('institutions.php', array('courseid' => $courseid)
 
 if ($delete == 1) {
     $DB->delete_records("booking_institutions", array("id" => $cid));
-    $delmessage = get_string('sucesfulldeletedinstitution', 'booking');
+    $delmessage = get_string('successfulldeletedinstitution', 'booking');
 
     redirect($redirecturl, $delmessage, 5);
 }
@@ -84,9 +84,6 @@ if ($mform->is_cancelled()) {
 
 $PAGE->set_heading($course->fullname);
 echo $OUTPUT->header();
-// this branch is executed if the form is submitted but the data doesn't validate and the form should be redisplayed
-// or on the first display of the form.
-
 $mform->set_data($defaultvalues);
 $mform->display();
 

@@ -17,7 +17,7 @@
 /**
  * A custom renderer class that extends the plugin_renderer_base and is used by the booking module.
  *
- * @package mod-booking
+ * @package mod_booking
  * @copyright 2014 David Bogner, Andraž Prinčič
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -35,19 +35,19 @@ class mod_booking_renderer extends plugin_renderer_base {
         $tmpurlparams['whichview'] = 'myinstitution';
         $row[] = new tabobject('myinstitution',
                 new moodle_url('/mod/booking/view.php', $tmpurlparams, "goenrol"),
-                get_string('showonlymyinstitutions', 'booking'));
+                get_string('showonlymyinstitutions', 'mod_booking'));
         $tmpurlparams['whichview'] = 'showactive';
         $row[] = new tabobject('showactive',
                 new moodle_url('/mod/booking/view.php', $tmpurlparams, "goenrol"),
-                get_string('showactive', 'booking'));
+                get_string('showactive', 'mod_booking'));
         $tmpurlparams['whichview'] = 'showall';
         $row[] = new tabobject('showall',
                 new moodle_url('/mod/booking/view.php', $tmpurlparams, "goenrol"),
-                get_string('showallbookings', 'booking'));
+                get_string('showallbookings', 'mod_booking'));
         $tmpurlparams['whichview'] = 'mybooking';
         $row[] = new tabobject('mybooking',
                 new moodle_url('/mod/booking/view.php', $tmpurlparams, "goenrol"),
-                get_string('showmybookings', 'booking', $mybookings));
+                get_string('showmybookingsonly', 'mod_booking'));
 
         if ($myoptions > 0) {
             $tmpurlparams['whichview'] = 'myoptions';
@@ -64,10 +64,11 @@ class mod_booking_renderer extends plugin_renderer_base {
      *
      * @param user_selector_base $existinguc
      * @param user_selector_base $potentialuc
+     * @param $courseid
      * @return string
      */
     public function subscriber_selection_form(user_selector_base $existinguc,
-            user_selector_base $potentialuc) {
+            user_selector_base $potentialuc, $courseid) {
         $output = '';
         $formattributes = array();
         $formattributes['id'] = 'subscriberform';
@@ -165,28 +166,39 @@ class mod_booking_renderer extends plugin_renderer_base {
 
             foreach ($options as $optionid => $user) {
                 // if the user is visible in only one booking instance, than show the user otherwise do not show
-                if ($user->status[$optionid]->bookingvisible) {
+                if ($user->bookingvisible) {
+                    // Waitinglist or regular.
+                    if ($user->waitinglist == 0) {
+                        $bookingstatus = get_string('booked', 'mod_booking');
+                    } else {
+                        $bookingstatus = get_string('onwaitinglist', 'mod_booking');
+                    }
+
                     $bookinginstanceurl = new moodle_url('/mod/booking/view.php',
-                            array('id' => $user->status[$optionid]->bookingcmid));
+                            array('id' => $user->cmid));
                     $bookingcourseurl = new moodle_url('/course/view.php',
-                            array('id' => $user->status[$optionid]->courseid));
+                            array('id' => $user->courseid));
                     $bookinglink = html_writer::link($bookinginstanceurl,
-                            $user->status[$optionid]->bookingtitle);
+                            $user->bookingtitle);
                     $courselink = html_writer::link($bookingcourseurl,
-                            $user->status[$optionid]->coursename);
+                            $user->coursename);
                     $html = html_writer::span(
-                            $user->status[$optionid]->bookingoptiontitle .
-                                     " $bookinglink.  $courselink " .
-                                     get_string($user->status[$optionid]->booked, 'booking'));
+                            $user->bookingoptiontitle .
+                                     " $bookinglink.  $courselink $bookingstatus");
                     $items[] = $html;
                 }
             }
             if (!empty($items)) {
                 $user = reset($options);
-                $output .= html_writer::tag('span',
-                        $this->output->user_picture($user) . " " . fullname($user)) . " ";
-                $output .= html_writer::link('mailto:' . $user->email, $user->email);
-                $output .= html_writer::alist($items);
+                $content = $this->output->user_picture($user) . " " . fullname($user) . " ";
+                $content .= html_writer::link('mailto:' . $user->email, $user->email);
+                $output .= html_writer::tag('h3', $content);
+                $output .= html_writer::start_tag('div', array ('class' => 'list-group'));
+                foreach ($items as $item) {
+                    $output .= html_writer::tag('div', $item, array('class' => 'list-group-item'));
+                }
+                $output .= html_writer::end_tag('div');
+                $output .= html_writer::empty_tag('br');
             }
         }
 
@@ -200,14 +212,12 @@ class mod_booking_renderer extends plugin_renderer_base {
      * @return string
      */
     public function render_rating(rating $rating) {
-        global $CFG, $USER;
 
         if ($rating->settings->aggregationmethod == RATING_AGGREGATE_NONE) {
             return null; // ratings are turned off
         }
 
         $ratingmanager = new rating_manager();
-        // Initialise the JavaScript so ratings can be done by AJAX.
 
         $strrate = get_string("rate", "rating");
         $ratinghtml = ''; // the string we'll return
@@ -255,8 +265,6 @@ class mod_booking_renderer extends plugin_renderer_base {
             // $inputs = $rateurl->params();
 
             // start the rating form
-            $formattrs = array('id' => "postrating{$rating->itemid}", 'class' => 'postratingform',
-                'method' => 'post', 'action' => $rateurl->out_omit_querystring());
             $formstart .= html_writer::start_tag('div', array('class' => 'ratingform'));
 
             // add the hidden inputs
@@ -292,5 +300,32 @@ class mod_booking_renderer extends plugin_renderer_base {
         }
 
         return $ratinghtml;
+    }
+
+    /**
+     * display all the bookings of the whole moodle site
+     * sorted by course
+     *
+     * @param mod_booking\output\booking_bookinginstance $data
+     * @return string rendered html
+     */
+    public function render_bookings(mod_booking\output\booking_bookinginstance $data) {
+        $o = '';
+        $data = $data->export_for_template($this);
+        $o .= $this->render_from_template('mod_booking/site_overview_bookinginstance', $data);
+        return $o;
+    }
+
+    /**
+     * display signinsheet pdf download form
+     *
+     * @param mod_booking\output\booking_bookinginstance $data
+     * @return string rendered html
+     */
+    public function render_signin_pdfdownloadform(mod_booking\output\signin_downloadform $data) {
+        $o = '';
+        $data = $data->export_for_template($this);
+        $o .= $this->render_from_template('mod_booking/signin_downloadform', $data);
+        return $o;
     }
 }

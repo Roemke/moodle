@@ -20,10 +20,16 @@
  * @copyright 2014 Andraž Prinčič <atletek@gmail.com>
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+namespace mod_booking;
 defined('MOODLE_INTERNAL') || die();
+require_once('../../lib/tablelib.php');
 
-
-class all_userbookings extends table_sql {
+/**
+ * Displays all bookings for a booking option
+ * @author Andraž Prinčič, David Bogner
+ *
+ */
+class all_userbookings extends \table_sql {
 
     public $bookingdata = null;
 
@@ -46,9 +52,10 @@ class all_userbookings extends table_sql {
     /**
      * Constructor
      *
-     * @param int $uniqueid all tables have to have a unique id, this is used as a key when storing table properties like sort order in the session.
+     * @param int $uniqueid all tables have to have a unique id, this is used as a key when
+     * storing table properties like sort order in the session.
      */
-    public function __construct($uniqueid, $bookingdata, $cm, $optionid) {
+    public function __construct($uniqueid, \mod_booking\booking_option $bookingdata, $cm, $optionid) {
         parent::__construct($uniqueid);
 
         $this->collapsible(true);
@@ -83,16 +90,45 @@ class all_userbookings extends table_sql {
         return '';
     }
 
+    protected function col_status($values) {
+        switch ($values->status) {
+            case 0:
+                return '';
+                break;
+            case 1:
+                return get_string('status_complete', 'booking');
+                break;
+            case 2:
+                return get_string('status_incomplete', 'booking');
+                break;
+            case 3:
+                return get_string('status_noshow', 'booking');
+                break;
+            case 4:
+                return get_string('status_failed', 'booking');
+                break;
+            case 5:
+                return get_string('status_unknown', 'booking');
+                break;
+            case 6:
+                return get_string('status_attending', 'booking');
+                break;
+            default:
+                return '';
+                break;
+        }
+    }
+
     public function col_fullname($values) {
         if (empty($values->otheroptions)) {
-            return html_writer::link(
-                    new moodle_url('/user/profile.php', array('id' => $values->userid)),
+            return \html_writer::link(
+                    new \moodle_url('/user/profile.php', array('id' => $values->userid)),
                     "{$values->firstname} {$values->lastname} ({$values->username})", array());
         } else {
-            return html_writer::link(
-                    new moodle_url('/user/profile.php', array('id' => $values->userid)),
+            return \html_writer::link(
+                    new \moodle_url('/user/profile.php', array('id' => $values->userid)),
                     "{$values->firstname} {$values->lastname} ({$values->username})", array()) .
-                     "({$values->otheroptions})";
+                     "&nbsp;({$values->otheroptions})";
         }
     }
 
@@ -121,7 +157,7 @@ class all_userbookings extends table_sql {
         $output = '';
         $renderer = $PAGE->get_renderer('mod_booking');
         if (!empty($values->rating)) {
-            $output .= html_writer::tag('div', $renderer->render($values->rating),
+            $output .= \html_writer::tag('div', $renderer->render($values->rating),
                     array('class' => 'booking-option-rating'));
         }
         return $output;
@@ -204,7 +240,7 @@ class all_userbookings extends table_sql {
             foreach ($ratingoptions as $name => $value) {
                 $attributes = array('type' => 'hidden', 'class' => 'ratinginput', 'name' => $name,
                     'value' => $value);
-                echo html_writer::empty_tag('input', $attributes);
+                echo \html_writer::empty_tag('input', $attributes);
             }
         }
     }
@@ -218,47 +254,88 @@ class all_userbookings extends table_sql {
         global $DB;
         echo '<input type="hidden" name="sesskey" value="' . sesskey() . '">';
         if (!$this->bookingdata->booking->autoenrol &&
-                 has_capability('mod/booking:communicate', context_module::instance($this->cm->id)) &&
+                 has_capability('mod/booking:communicate', \context_module::instance($this->cm->id)) &&
                  $this->bookingdata->option->courseid > 0) {
-            echo '<input type="submit" name="subscribetocourse" value="' .
+            echo '<input type="submit" class="btn btn-secondary" name="subscribetocourse" value="' .
              get_string('subscribetocourse', 'booking') . '" />';
         }
 
-        if (has_capability('mod/booking:deleteresponses', context_module::instance($this->cm->id))) {
-            echo '<input type="submit" name="deleteusers" value="' .
+        if (has_capability('mod/booking:deleteresponses', \context_module::instance($this->cm->id))) {
+            echo '<input type="submit" class="btn btn-secondary" name="deleteusers" value="' .
                      get_string('booking:deleteresponses', 'booking') . '" />';
+            if ($this->bookingdata->booking->completionmodule > 0) {
+                $result = $DB->get_record_sql(
+                        'SELECT cm.id, cm.course, cm.module, cm.instance, m.name
+                FROM {course_modules} cm LEFT JOIN {modules} m ON m.id = cm.module WHERE cm.id = ?',
+                        array($this->bookingdata->booking->completionmodule));
+                $dynamicactivitymodulesdata = $DB->get_record($result->name,
+                        array('id' => $result->instance));
+                echo '<input type="submit" class="btn btn-secondary" name="deleteusersactivitycompletion" value="' .
+                         get_string('deleteresponsesactivitycompletion', 'booking',
+                                 $dynamicactivitymodulesdata->name) . '" />';
+            }
         }
 
-        if (has_capability('mod/booking:communicate', context_module::instance($this->cm->id))) {
+        if (has_capability('mod/booking:communicate', \context_module::instance($this->cm->id))) {
             $pollurl = trim($this->bookingdata->option->pollurl);
             if (!empty($pollurl)) {
-                echo '<input type="submit" name="sendpollurl" value="' .
+                echo '<input type="submit" class="btn btn-secondary" name="sendpollurl" value="' .
                          get_string('booking:sendpollurl', 'booking') . '" />';
             }
-            echo '<input type="submit" name="sendreminderemail" value="' .
+            echo '<input type="submit" class="btn btn-secondary" name="sendreminderemail" value="' .
                      get_string('sendreminderemail', 'booking') . '" />';
-            echo '<input type="submit" name="sendcustommessage" value="' .
+            echo '<input type="submit" class="btn btn-secondary" name="sendcustommessage" value="' .
                      get_string('sendcustommessage', 'booking') . '" />';
         }
 
         if (booking_check_if_teacher($this->bookingdata->option) ||
                  has_capability('mod/booking:updatebooking',
-                        context_module::instance($this->cm->id))) {
-            echo '<input type="submit" name="activitycompletion" value="' .
+                        \context_module::instance($this->cm->id))) {
+            echo '<input type="submit"  class="btn btn-secondary" name="activitycompletion" value="' .
              (empty($this->bookingdata->booking->btncacname) ? get_string(
                     'confirmactivitycompletion', 'booking') : $this->bookingdata->booking->btncacname) .
              '" />';
 
             // Output rating button.
-            if (has_capability('moodle/rating:rate', context_module::instance($this->cm->id)) &&
+            if (has_capability('moodle/rating:rate', \context_module::instance($this->cm->id)) &&
                      $this->bookingdata->booking->assessed != 0) {
-                $ratingbutton = html_writer::start_tag('span', array('class' => "ratingsubmit"));
-                $attributes = array('type' => 'submit', 'class' => 'postratingmenusubmit',
+                $ratingbutton = \html_writer::start_tag('span', array('class' => "ratingsubmit"));
+                $attributes = array('type' => 'submit', 'class' => 'postratingmenusubmit btn btn-secondary',
                     'id' => 'postratingsubmit', 'name' => 'postratingsubmit',
                     'value' => s(get_string('rate', 'rating')));
-                $ratingbutton .= html_writer::empty_tag('input', $attributes);
-                $ratingbutton .= html_writer::end_span();
+                $ratingbutton .= \html_writer::empty_tag('input', $attributes);
+                $ratingbutton .= \html_writer::end_span();
                 echo $ratingbutton;
+            }
+
+            // Output transfer users to other option.
+            if (has_capability('mod/booking:subscribeusers',
+                    \context_module::instance($this->cm->id)) || booking_check_if_teacher(
+                            $this->bookingdata->option)) {
+                echo "<br>";
+                if (has_capability('mod/booking:subscribeusers',
+                        \context_module::instance($this->cm->id))) {
+                            $optionids = \mod_booking\booking::get_all_optionids($this->bookingdata->id);
+                } else {
+                    $optionids = $this->bookingdata->get_all_optionids_of_teacher();
+                }
+                $optionids = array_values(array_diff($optionids, array($this->optionid)));
+                if (!empty($optionids)) {
+                    list($insql, $inparams) = $DB->get_in_or_equal($optionids);
+                    $options = $DB->get_records_select_menu('booking_options', "id {$insql}",
+                            $inparams, '', 'id,text');
+                    $optionbutton = \html_writer::start_tag('span',
+                            array('class' => "transfersubmit"));
+                    echo \html_writer::div(get_string('transferheading', 'mod_booking'));
+                    echo $dropdown = \html_writer::select($options, 'transferoption');
+                    $attributes = array('type' => 'submit',
+                        'class' => 'transfersubmit btn btn-secondary', 'id' => 'transfersubmit',
+                        'name' => 'transfersubmit',
+                        'value' => s(get_string('transfer', 'mod_booking')));
+                    $optionbutton .= \html_writer::empty_tag('input', $attributes);
+                    $optionbutton .= \html_writer::end_span();
+                    echo $optionbutton;
+                }
             }
 
             if ($this->bookingdata->booking->numgenerator) {
@@ -293,13 +370,13 @@ class all_userbookings extends table_sql {
 
                     echo "<br>";
 
-                    echo html_writer::select($options, 'selectoptionid', '');
+                    echo \html_writer::select($options, 'selectoptionid', '');
 
                     $label = (empty(
                             $this->bookingdata->booking->booktootherbooking) ? get_string(
                             'booktootherbooking', 'booking') : $this->bookingdata->booking->booktootherbooking);
 
-                    echo '<input type="submit" name="booktootherbooking" value="' .
+                    echo '<input type="submit" class="btn btn-secondary" name="booktootherbooking" value="' .
                              $label . '" />';
                 } else {
                     $alllimits = $DB->get_records_sql(
@@ -318,16 +395,33 @@ class all_userbookings extends table_sql {
 
                         echo "<br>";
 
-                        echo html_writer::select($options, 'selectoptionid', '');
+                        echo \html_writer::select($options, 'selectoptionid', '');
 
                         $label = (empty(
                                 $this->bookingdata->booking->booktootherbooking) ? get_string(
                                 'booktootherbooking', 'booking') : $this->bookingdata->booking->booktootherbooking);
 
-                        echo '<input type="submit" name="booktootherbooking" value="' .
+                        echo '<input type="submit" class="btn btn-secondary" name="booktootherbooking" value="' .
                                  $label . '" />';
                     }
                 }
+            }
+
+            if ($this->bookingdata->booking->enablepresence) {
+                // Change presence status.
+                // Status order: Unknown, Attending, Complete, Incomplete, No Show, and Failed.
+                echo "<br>";
+                $presences = array(5 => get_string('status_unknown', 'booking'),
+                    6 => get_string('status_attending', 'booking'),
+                    1 => get_string('status_complete', 'booking'),
+                    2 => get_string('status_incomplete', 'booking'),
+                    3 => get_string('status_noshow', 'booking'),
+                    4 => get_string('status_failed', 'booking'));
+
+                echo \html_writer::select($presences, 'selectpresencestatus', '');
+
+                echo '<input type="submit" class="btn btn-secondary" name="changepresencestatus" value="' .
+                         get_string('confirmpresence', 'booking') . '" />';
             }
         }
 
