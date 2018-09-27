@@ -859,16 +859,21 @@ if ($formdata = $mform2->is_cancelled()) {
             if (!preg_match('/^cohort\d+$/', $column)) {
                 continue;
             }
-
+            $removeCohortFlag = FALSE;
             if (!empty($user->$column)) {
                 $addcohort = $user->$column;
-                if (!isset($cohorts[$addcohort])) {
+                if (substr($addcohort,0,2)==='--') { //remove user from cohort, tested only for idnumber
+                  $removeCohortFlag = TRUE;
+                  $addcohort = substr($addcohort,2); //idnumber (is non-numeric) 
+                }  
+                if (!isset($cohorts[$addcohort])) { //add with cohort1 and remove with cohort2 should not work
                     if (is_number($addcohort)) {
                         // only non-numeric idnumbers!
                         $cohort = $DB->get_record('cohort', array('id'=>$addcohort));
                     } else {
                         $cohort = $DB->get_record('cohort', array('idnumber'=>$addcohort));
-                        if (empty($cohort) && has_capability('moodle/cohort:manage', context_system::instance())) {
+                        if (empty($cohort) && has_capability('moodle/cohort:manage', context_system::instance())
+                            && !$removeCohortFlag ) {
                             // Cohort was not found. Create a new one.
                             $cohortid = cohort_add_cohort((object)array(
                                 'idnumber' => $addcohort,
@@ -886,15 +891,23 @@ if ($formdata = $mform2->is_cancelled()) {
                         $cohorts[$addcohort] = get_string('external', 'core_cohort');
                     } else {
                         $cohorts[$addcohort] = $cohort;
-                    }
+                    } 
                 }
 
                 if (is_object($cohorts[$addcohort])) {
                     $cohort = $cohorts[$addcohort];
-                    if (!$DB->record_exists('cohort_members', array('cohortid'=>$cohort->id, 'userid'=>$user->id))) {
+                    if (!$removeCohortFlag) {
+                      if (!$DB->record_exists('cohort_members', array('cohortid'=>$cohort->id, 'userid'=>$user->id))) {
                         cohort_add_member($cohort->id, $user->id);
                         // we might add special column later, for now let's abuse enrolments
                         $upt->track('enrolments', get_string('useradded', 'core_cohort', s($cohort->name)));
+                      }
+                    } else {
+                      if ($DB->record_exists('cohort_members', array('cohortid'=>$cohort->id, 'userid'=>$user->id))) {
+                        cohort_remove_member($cohort->id,$user->id);
+                        // we might add special column later, for now let's abuse enrolments
+                        $upt->track('enrolments', get_string('userremoved', 'core_cohort', s($cohort->name)));
+                      }
                     }
                 } else {
                     // error message
@@ -1068,6 +1081,8 @@ if ($formdata = $mform2->is_cancelled()) {
                     $upt->track('enrolments', get_string('addedtogroupnotenrolled', '', $user->{'group'.$i}), 'error');
                     continue;
                 }
+                $removeGroupFlag = FALSE;
+                
                 //build group cache
                 if (is_null($ccache[$shortname]->groups)) {
                     $ccache[$shortname]->groups = array();
@@ -1086,6 +1101,11 @@ if ($formdata = $mform2->is_cancelled()) {
                 }
                 // group exists?
                 $addgroup = $user->{'group'.$i};
+                if (substr( $addgroup ,0,2) === '--') { //user should be removed from group
+                  $addgroup = substr($addgroup,2); //name of group
+                  $removeGroupFlag = TRUE;        
+                }
+                
                 if (!array_key_exists($addgroup, $ccache[$shortname]->groups)) {
                     // if group doesn't exist,  create it
                     $newgroupdata = new stdClass();
@@ -1106,7 +1126,10 @@ if ($formdata = $mform2->is_cancelled()) {
                 $gname = $ccache[$shortname]->groups[$addgroup]->name;
 
                 try {
-                    if (groups_add_member($gid, $user->id)) {
+                    if ($removeGroupFlag && groups_remove_member($gid,$user->id)) {
+                        $upt->track('enrolments', get_string('removedfromgroup', '', s($gname)));
+                    }
+                    else if (!$removeGroupFlag && groups_add_member($gid, $user->id)) {
                         $upt->track('enrolments', get_string('addedtogroup', '', s($gname)));
                     }  else {
                         $upt->track('enrolments', get_string('addedtogroupnot', '', s($gname)), 'error');
