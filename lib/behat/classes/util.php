@@ -31,6 +31,10 @@ require_once(__DIR__ . '/behat_command.php');
 require_once(__DIR__ . '/behat_config_manager.php');
 
 require_once(__DIR__ . '/../../filelib.php');
+require_once(__DIR__ . '/../../clilib.php');
+
+use Behat\Mink\Session;
+use Behat\Mink\Exception\ExpectationException;
 
 /**
  * Init/reset utilities for Behat database and dataroot
@@ -179,7 +183,7 @@ class behat_util extends testing_util {
 
             behat_error (BEHAT_EXITCODE_REQUIREMENT, $CFG->behat_wwwroot . ' is not available, ensure you specified ' .
                 'correct url and that the server is set up and started.' . PHP_EOL . ' More info in ' .
-                behat_command::DOCS_URL . '#Running_tests' . PHP_EOL);
+                behat_command::DOCS_URL . PHP_EOL);
         }
 
         // Check if cli version is same as web version.
@@ -372,5 +376,39 @@ class behat_util extends testing_util {
         // Initialise $CFG with default values. This is needed for behat cli process, so we don't have modified
         // $CFG values from the old run. @see set_config.
         initialise_cfg();
+    }
+
+    /**
+     * Pause execution immediately.
+     *
+     * @param Session $session
+     * @param string $message The message to show when pausing.
+     * This will be passed through cli_ansi_format so appropriate ANSI formatting and features are available.
+     */
+    public static function pause(Session $session, string $message) {
+        $posixexists = function_exists('posix_isatty');
+
+        // Make sure this step is only used with interactive terminal (if detected).
+        if ($posixexists && !@posix_isatty(STDOUT)) {
+            throw new ExpectationException('Break point should only be used with interactive terminal.', $session);
+        }
+
+        // Save the cursor position, ring the bell, and add a new line.
+        fwrite(STDOUT, cli_ansi_format("<cursor:save><bell><newline>"));
+
+        // Output the formatted message and reset colour back to normal.
+        $formattedmessage = cli_ansi_format("{$message}<colour:normal>");
+        fwrite(STDOUT, $formattedmessage);
+
+        // Wait for input.
+        fread(STDIN, 1024);
+
+        // Move the cursor back up to the previous position, then restore the original position stored earlier, and move
+        // it back down again.
+        fwrite(STDOUT, cli_ansi_format("<cursor:up><cursor:up><cursor:restore><cursor:down><cursor:down>"));
+
+        // Add any extra lines back if the provided message was spread over multiple lines.
+        $linecount = count(explode("\n", $formattedmessage));
+        fwrite(STDOUT, str_repeat(cli_ansi_format("<cursor:down>"), $linecount - 1));
     }
 }
