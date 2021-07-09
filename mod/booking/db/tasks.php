@@ -13,6 +13,12 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+defined('MOODLE_INTERNAL') || die();
+
 $tasks = array(
     array('classname' => 'mod_booking\task\remove_activity_completion', 'blocking' => 0,
-        'minute' => '*', 'hour' => '*', 'day' => '*', 'dayofweek' => '*', 'month' => '*'));
+        'minute' => '*', 'hour' => '*', 'day' => '*', 'dayofweek' => '*', 'month' => '*'),
+    array('classname' => 'mod_booking\task\enrol_bookedusers_tocourse', 'blocking' => 0,
+        'minute' => '10', 'hour' => '*', 'day' => '*', 'dayofweek' => '*', 'month' => '*'),
+);

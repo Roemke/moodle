@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 /**
- * This page allows a user to subscribe/unsubscribe other users from a booking option TODO: upgrade logging, add logging for added/deleted users
+ * This page allows a user to subscribe/unsubscribe other users from a booking option
+ * TODO: upgrade logging, add logging for added/deleted users
  *
  * @author David Bogner davidbogner@gmail.com
  * @package mod/booking
@@ -22,8 +23,8 @@
 require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
 require_once($CFG->dirroot . '/mod/booking/locallib.php');
 
-$id = required_param('id', PARAM_INT); // course_module ID
-$optionid = required_param('optionid', PARAM_INT); //
+$id = required_param('id', PARAM_INT); // Course_module ID.
+$optionid = required_param('optionid', PARAM_INT);
 $subscribe = optional_param('subscribe', false, PARAM_BOOL);
 $unsubscribe = optional_param('unsubscribe', false, PARAM_BOOL);
 $agree = optional_param('agree', false, PARAM_BOOL);
@@ -56,11 +57,11 @@ $PAGE->set_url($url);
 $PAGE->set_title(get_string('modulename', 'booking'));
 $PAGE->set_heading($COURSE->fullname);
 $PAGE->navbar->add(get_string('booking:subscribeusers', 'booking'), $url);
-if (!$agree && (!empty($bookingoption->booking->bookingpolicy))) {
+if (!$agree && (!empty($bookingoption->booking->settings->bookingpolicy))) {
     echo $OUTPUT->header();
     $alright = false;
     $message = "<p><b>" . get_string('agreetobookingpolicy', 'booking') . ":</b></p>";
-    $message .= "<p>" . $bookingoption->booking->bookingpolicy . "<p>";
+    $message .= "<p>" . format_text($bookingoption->booking->settings->bookingpolicy, FORMAT_HTML) . "<p>";
     $continueurl = new moodle_url($PAGE->url->out(false, array('agree' => 1)));
     $continue = new single_button($continueurl, get_string('continue'), 'get');
     $cancel = new single_button($errorurl, get_string('cancel'), 'get');
@@ -101,8 +102,10 @@ if (!$agree && (!empty($bookingoption->booking->bookingpolicy))) {
                     if (!empty($notsubscribedusers)) {
                         foreach ($notsubscribedusers as $user) {
                             $result = $DB->get_records_sql(
-                                    'SELECT bo.text FROM {booking_answers} ba LEFT JOIN {booking_options} bo ON bo.id = ba.optionid WHERE ba.userid = ? AND
-                                        ba.bookingid = ?', array($user->id, $bookingoption->id));
+                                    'SELECT bo.text FROM {booking_answers} ba
+                                     LEFT JOIN {booking_options} bo ON bo.id = ba.optionid
+                                     WHERE ba.userid = ?
+                                     AND ba.bookingid = ?', array($user->id, $bookingoption->booking->id));
                             $output .= "{$user->firstname} {$user->lastname}";
                             if (!empty($result)) {
                                 $r = array();
@@ -142,7 +145,7 @@ if (!$agree && (!empty($bookingoption->booking->bookingpolicy))) {
     }
 }
 echo $OUTPUT->header();
-echo $OUTPUT->heading("{$bookingoption->option->text}", 3, 'helptitle', 'uniqueid');
+echo $OUTPUT->heading(format_string($bookingoption->option->text), 3, 'helptitle', 'uniqueid');
 
 echo html_writer::tag('div',
         html_writer::link(

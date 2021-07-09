@@ -63,11 +63,11 @@ class generator {
     public $includeteachers = false;
 
     /**
-     * times for event
+     * freesans for event
      *
      * @var string
      */
-    public $times;
+    public $freesans;
 
     /**
      * global cfg setting of booking module for custom fields
@@ -175,6 +175,12 @@ class generator {
     protected $pdfsessions = 0;
 
     /**
+     * Width of the cell where teacher names are placed
+     * @var integer
+     */
+    protected $cellwidthteachers = 200;
+
+    /**
      * Margin top of page
      *
      * @var integer
@@ -197,8 +203,10 @@ class generator {
 
         if ($this->orientation == "P") {
             $this->colwidth = 210;
+            $this->cellwidthteachers = 125;
         } else {
             $this->colwidth = 297;
+            $this->cellwidthteachers = 200;
         }
         $this->orderby = $pdfoptions->orderby;
         $teachers = $this->bookingdata->get_teachers();
@@ -208,13 +216,13 @@ class generator {
             }
         }
 
-        $this->get_bookingoption_times();
+        $this->get_bookingoption_freesans();
         $cfgcustfields = get_config('booking', 'showcustfields');
         if ($cfgcustfields) {
             $this->cfgcustfields = explode(',', $cfgcustfields);
         }
 
-        $this->allfields = explode(',', $this->bookingdata->booking->signinsheetfields);
+        $this->allfields = explode(',', $this->bookingdata->booking->settings->signinsheetfields);
         if (get_config('booking', 'numberrows') == 1) {
             $this->showrownumbers = true;
             $this->rownumber = 0;
@@ -244,11 +252,11 @@ class generator {
         $groupparams = array();
         $addsqlwhere = '';
 
-        if (groups_get_activity_groupmode($this->bookingdata->cm) == SEPARATEGROUPS and
+        if (groups_get_activity_groupmode($this->bookingdata->booking->cm) == SEPARATEGROUPS and
                  !has_capability('moodle/site:accessallgroups',
-                        \context_course::instance($this->bookingdata->course->id))) {
+                        \context_course::instance($this->bookingdata->booking->course->id))) {
             list($groupsql, $groupparams) = \mod_booking\booking::booking_get_groupmembers_sql(
-                    $this->bookingdata->course->id);
+                    $this->bookingdata->booking->course->id);
             $addsqlwhere .= " AND u.id IN ($groupsql)";
         }
         $remove = array('signinextracols1', 'signinextracols2', 'signinextracols3', 'fullname',
@@ -313,12 +321,12 @@ class generator {
         $this->pdf->SetHeaderMargin($this->margintop);
         $this->pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
         if ($this->title == 2) {
-            $this->pdf->SetHeaderData('', 0, $this->bookingdata->option->text, '');
+            $this->pdf->SetHeaderData('', 0, format_string($this->bookingdata->option->text), '');
         } else if ($this->title == 1) {
             $this->pdf->SetHeaderData('', 0,
-                    $this->bookingdata->booking->name . ': ' . $this->bookingdata->option->text, '');
+                    format_string($this->bookingdata->booking->settings->name) . ': ' . format_string($this->bookingdata->option->text), '');
         } else {
-            $this->pdf->SetHeaderData('', 0, $this->bookingdata->booking->name, '');
+            $this->pdf->SetHeaderData('', 0, format_string($this->bookingdata->booking->settings->name, ''));
         }
         $this->pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
         $this->pdf->SetAutoPageBreak(true, PDF_MARGIN_BOTTOM);
@@ -368,7 +376,7 @@ class generator {
             if ($this->pdf->go_to_newline(12)) {
                 $this->set_page_header();
             }
-            $this->pdf->SetFont(PDF_FONT_NAME_MAIN, '', 10);
+            $this->pdf->SetFont('freesans', '', 10);
 
             $c = 0;
             if ($this->showrownumbers) {
@@ -432,19 +440,19 @@ class generator {
                         1);
             }
         }
-        $this->pdf->Output($this->bookingdata->option->text . '.pdf', 'D');
+        $this->pdf->Output(format_string($this->bookingdata->option->text) . '.pdf', 'D');
     }
 
     /**
-     * Get the times of the booking option
+     * Get the freesans of the booking option
      */
-    public function get_bookingoption_times() {
-        $this->times = get_string('datenotset', 'booking');
+    public function get_bookingoption_freesans() {
+        $this->freesans = get_string('datenotset', 'booking');
         if ($this->bookingdata->option->coursestarttime == 0) {
             return;
         } else {
-            if (empty($this->bookingdata->optiontimes)) {
-                $times = userdate($this->bookingdata->option->coursestarttime) . " - " .
+            if (empty($this->bookingdata->optionfreesans)) {
+                $freesans = userdate($this->bookingdata->option->coursestarttime) . " - " .
                          userdate($this->bookingdata->option->courseendtime);
             } else if ($this->pdfsessions == 0) {
                 $val = array();
@@ -456,15 +464,15 @@ class generator {
                             get_string('strftimetime', 'langconfig'));
                     $val[] = get_string('leftandrightdate', 'booking', $tmpdate);
                 }
-                $times = implode("\n\r", $val);
+                $freesans = implode("\n\r", $val);
             } else {
-                $times = userdate($this->bookingdata->sessions[$this->pdfsessions]->coursestarttime,
+                $freesans = userdate($this->bookingdata->sessions[$this->pdfsessions]->coursestarttime,
                         get_string('strftimedatetime', 'langconfig'));
-                $times .= ' - ' . userdate($this->bookingdata->sessions[$this->pdfsessions]->courseendtime,
+                $freesans .= ' - ' . userdate($this->bookingdata->sessions[$this->pdfsessions]->courseendtime,
                         get_string('strftimetime', 'langconfig'));
             }
         }
-        $this->times = $times;
+        $this->freesans = $freesans;
     }
 
     /**
@@ -475,9 +483,9 @@ class generator {
      */
     public function get_signinsheet_logo() {
         $fs = get_file_storage();
-        $context = \context_module::instance($this->bookingdata->cm->id);
+        $context = \context_module::instance($this->bookingdata->booking->cm->id);
         $files = $fs->get_area_files($context->id, 'mod_booking', 'signinlogoheader',
-                $this->bookingdata->booking->id, 'sortorder,filepath,filename', false);
+                $this->bookingdata->booking->settings->id, 'sortorder,filepath,filename', false);
 
         if (!$files) {
             $files = $fs->get_area_files(\context_system::instance()->id, 'booking',
@@ -510,9 +518,9 @@ class generator {
     public function get_signinsheet_logo_footer() {
         $fileuse = false;
         $fs = get_file_storage();
-        $context = \context_module::instance($this->bookingdata->cm->id);
+        $context = \context_module::instance($this->bookingdata->booking->cm->id);
         $files = $fs->get_area_files($context->id, 'mod_booking', 'signinlogofooter',
-                $this->bookingdata->booking->id, 'sortorder,filepath,filename', false);
+                $this->bookingdata->booking->settings->id, 'sortorder,filepath,filename', false);
 
         if (!$files) {
             $files = $fs->get_area_files(\context_system::instance()->id, 'booking',
@@ -534,24 +542,22 @@ class generator {
     public function set_page_header($extracols = array ()) {
         global $DB;
         // Get header and footer logo for signin sheet.
+        $this->pdf->SetXY(18, $this->margintop + 13);
         if ($this->get_signinsheet_logo()) {
-            $this->pdf->SetXY(18, $this->margintop + 13);
             $this->pdf->Image('@' . $this->signinsheetlogo->get_content(), '', '', $this->w, $this->h, '', '', 'T',
                     true, 150, 'R', false, false, 0, false, false, false);
         }
-        $this->pdf->SetFont(PDF_FONT_NAME_MAIN, '', 12);
-        $this->pdf->Cell(0, 0, '', 0, 1, '', 0);
+        $this->pdf->SetFont('freesans', '', 12);
         $this->pdf->Ln();
-
-        $this->pdf->SetFont(PDF_FONT_NAME_MAIN, '', 10);
-        $this->pdf->Cell(0, 0,
+        $this->pdf->SetFont('freesans', '', 10);
+        $this->pdf->MultiCell($this->cellwidthteachers, 0,
                 get_string('teachers', 'booking') . ": " . implode(', ', $this->teachers), 0, 1, '',
                 0);
         $this->pdf->Ln();
 
         $this->pdf->MultiCell($this->pdf->GetStringWidth(get_string('pdfdate', 'booking')) + 5, 0,
                 get_string('pdfdate', 'booking'), 0, 1, '', 0);
-        $this->pdf->MultiCell(0, 0, $this->times, 0, 1, '', 1);
+        $this->pdf->MultiCell(0, 0, $this->freesans, 0, 1, '', 1);
 
         if (!empty($this->cfgcustfields)) {
             $customfields = \mod_booking\booking_option::get_customfield_settings();
@@ -565,7 +571,8 @@ class generator {
                 foreach ($custfieldvalues as $record) {
                     if (!empty($record->value)) {
                         $this->pdf->Cell(0, 0,
-                                $customfields[$record->cfgname]['value'] . ": " . $record->value, 0,
+                                $customfields[$record->cfgname]['value'] . ": " .
+                                ($customfields[$record->cfgname]['type'] == 'multiselect' ? implode(", ", explode("\n", $record->value)) : $record->value), 0,
                                 1, '', 0, '', 1);
                     }
                 }
@@ -574,13 +581,13 @@ class generator {
 
         if (!empty($this->bookingdata->option->address)) {
             $this->pdf->Cell(0, 0,
-                    get_string('pdflocation', 'booking') . $this->bookingdata->option->address, 0, 1,
+                    get_string('pdflocation', 'booking') . format_string($this->bookingdata->option->address), 0, 1,
                     '', 0, '', 1);
         }
 
         if (!empty($this->bookingdata->option->location)) {
             $this->pdf->Cell(0, 0,
-                    get_string('pdfroom', 'booking') . $this->bookingdata->option->location, 0, 1, '',
+                    get_string('pdfroom', 'booking') . format_string($this->bookingdata->option->location), 0, 1, '',
                     0, '', 1);
         }
         $this->pdf->Ln();
@@ -595,7 +602,7 @@ class generator {
      * Setup the header row with the column headings for each column
      */
     public function set_table_headerrow () {
-        $this->pdf->SetFont(PDF_FONT_NAME_MAIN, 'B', 12);
+        $this->pdf->SetFont('freesans', 'B', 12);
         $c = 0;
         // Setup table header row.
         foreach ($this->allfields as $value) {
@@ -617,7 +624,7 @@ class generator {
                     $name = get_string('signature', 'mod_booking');
                     break;
                 case 'institution':
-                    $name = get_string('institution');
+                    $name = get_string('institution', 'booking');
                     break;
                 case 'description':
                     $name = get_string('description');
@@ -660,6 +667,6 @@ class generator {
             }
             $this->pdf->Cell($w, 0, $name, 1, (count($this->allfields) == $c ? 1 : 0), '', 0, '', 1);
         }
-        $this->pdf->SetFont(PDF_FONT_NAME_MAIN, '', 12);
+        $this->pdf->SetFont('freesans', '', 12);
     }
 }

@@ -23,9 +23,7 @@
  */
 defined('MOODLE_INTERNAL') || die();
 
-
 require_once($CFG->dirroot . '/user/profile/lib.php');
-
 
 $ADMIN->add('modsettings',
         new admin_category('modbookingfolder', new lang_string('pluginname', 'mod_booking'),
@@ -33,11 +31,19 @@ $ADMIN->add('modsettings',
 
 $ADMIN->add('modbookingfolder', $settings);
 
+$settings->add(
+        new admin_setting_heading('mod_booking_icalcfg',
+                get_string('icalcfg', 'mod_booking'),
+                get_string('icalcfgdesc', 'mod_booking')));
 if ($ADMIN->fulltree) {
     $settings->add(
             new admin_setting_configcheckbox('booking/attachical',
                     get_string('attachical', 'mod_booking'),
                     get_string('attachicaldesc', 'mod_booking'), 0));
+    $settings->add(
+            new admin_setting_configcheckbox('booking/multiicalfiles',
+                    get_string('multiicalfiles', 'mod_booking'),
+                    get_string('multiicalfilesdesc', 'mod_booking'), 0));
     $settings->add(
             new admin_setting_configcheckbox('booking/attachicalsessions',
                     get_string('attachicalsess', 'mod_booking'),
@@ -46,6 +52,13 @@ if ($ADMIN->fulltree) {
             new admin_setting_configcheckbox('booking/icalcancel',
                     get_string('icalcancel', 'mod_booking'),
                     get_string('icalcanceldesc', 'mod_booking'), 1));
+    $options = array(1 => get_string('courseurl', 'hub'), 2 => get_string('location', 'mod_booking'),
+        3 => get_string('institution', 'mod_booking'), 4 => get_string('address'));
+    $settings->add(
+            new admin_setting_configselect('booking/icalfieldlocation',
+                    get_string('icalfieldlocation', 'mod_booking'),
+                    get_string('icalfieldlocationdesc', 'mod_booking'),
+                    1, $options));
 
     $name = 'booking/googleapikey';
     $visiblename = get_string('googleapikey', 'mod_booking');
@@ -53,7 +66,6 @@ if ($ADMIN->fulltree) {
     $setting = new admin_setting_configtext($name, $visiblename, $description, '');
     $settings->add($setting);
 
-    // The default here is feedback_comments (if it exists).
     $settings->add(
             new admin_setting_heading('mod_booking_signinsheet',
                     get_string('cfgsignin', 'mod_booking'),
@@ -118,6 +130,23 @@ if ($ADMIN->fulltree) {
         $setting = new admin_setting_configtext($name, $visiblename, $description, '');
         $settings->add($setting);
     }
+
+    $settings->add(
+        new admin_setting_heading('optiontemplatessettings_heading',
+                get_string('optiontemplatessettings', 'mod_booking'), ''));
+
+        $alltemplates = array('' => get_string('dontuse', 'booking'));
+        $alloptiontemplates = $DB->get_records('booking_options', array('bookingid' => 0), '', $fields = 'id, text', 0, 0);
+
+    foreach ($alloptiontemplates as $key => $value) {
+            $alltemplates[$value->id] = $value->text;
+    }
+
+    $settings->add(
+             new admin_setting_configselect('booking/defaulttemplate',
+                        get_string('defaulttemplate', 'mod_booking'),
+                        get_string('defaulttemplatedesc', 'mod_booking'),
+                        1, $alltemplates));
 }
 $ADMIN->add('modbookingfolder',
         new admin_externalpage('modbookingcustomfield',

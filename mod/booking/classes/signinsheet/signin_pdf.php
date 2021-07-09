@@ -15,14 +15,15 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 namespace mod_booking\signinsheet;
 
-require_once($CFG->libdir . '/tcpdf/tcpdf.php');
+defined('MOODLE_INTERNAL') || die();
 
+require_once($CFG->libdir . '/pdflib.php');
 /**
  * Extend the TCPDF class in order to add custom page break
  * @author David Bogner
  *
  */
-class signin_pdf extends \TCPDF {
+class signin_pdf extends \pdf {
 
     private $file = false;
 

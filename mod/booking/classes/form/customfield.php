@@ -15,6 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace mod_booking\form;
+
+defined('MOODLE_INTERNAL') || die();
+
 require_once($CFG->libdir . '/formslib.php');
 
 class customfield extends \moodleform {
@@ -24,13 +27,14 @@ class customfield extends \moodleform {
         $i = 0;
         $defaultvalues = array();
         $fieldnames = array();
+        $options = array();
         $customfields = \mod_booking\booking_option::get_customfield_settings();
         $repeatno = \count($customfields);
-
         foreach ($customfields as $customfieldname => $value) {
             $defaultvalues[$i] = $value['value'];
             $fieldnames[$i] = $customfieldname;
             $types[$i] = $value['type'];
+            $options[$i] = $value['options'];
             $i++;
         }
 
@@ -38,9 +42,13 @@ class customfield extends \moodleform {
         $repeatarray[] = $mform->createElement('text', 'customfield',
                 get_string('customfielddef', 'mod_booking'));
         $repeatarray[] = $mform->createElement('hidden', 'customfieldname', '');
-        $options = array('textfield' => get_string('textfield', 'mod_booking'));
+        $optionstype = array('textfield' => get_string('textfield', 'mod_booking'),
+                        'select' => get_string('selectfield', 'mod_booking'),
+                        'multiselect' => get_string('multiselect', 'mod_booking'));
         $repeatarray[] = $mform->createElement('select', 'type',
-                get_string('customfieldtype', 'mod_booking'), $options);
+                get_string('customfieldtype', 'mod_booking'), $optionstype);
+        $repeatarray[] = $mform->createElement('textarea', 'options',
+                get_string('customfieldoptions', 'mod_booking'), 'rows="5" cols="50"');
         $repeatarray[] = $mform->createElement('checkbox', 'deletefield',
                 \get_string('delcustfield', 'mod_booking'));
 
@@ -49,6 +57,7 @@ class customfield extends \moodleform {
         $repeateloptions['customfield']['disabledif'] = array('deletefield', 'eq', 1);
         $repeateloptions['type']['disabledif'] = array('deletefield', 'eq', 1);
         $repeateloptions['type']['disabledif'] = array('customfieldname', 'eq', 1);
+        $repeateloptions['options']['disabledif'] = array('type', 'eq', 'textfield');
         $repeateloptions['customfield']['type'] = PARAM_NOTAGS;
 
         $this->repeat_elements($repeatarray, $repeatno, $repeateloptions, 'option_repeats',
@@ -59,6 +68,10 @@ class customfield extends \moodleform {
                     if (isset($fieldnames[$i])) {
                         $mform->setDefault("customfieldname[$i]", $fieldnames[$i]);
                         $mform->setDefault("customfield[$i]", $defaultvalues[$i]);
+                        $mform->setDefault("type[$i]", $types[$i]);
+                        if (isset($options[$i])) {
+                            $mform->setDefault("options[$i]", $options[$i]);
+                        }
                         $mform->disabledIf("type[$i]", "customfield[$i]", $types[$i]);
                     }
                 }
@@ -101,6 +114,7 @@ class customfield extends \moodleform {
                 unset($data->customfieldname[$value]);
                 unset($data->type[$value]);
                 unset($data->customfield[$value]);
+                unset($data->options[$value]);
             }
         }
 
@@ -126,8 +140,14 @@ class customfield extends \moodleform {
                     if (isset($data->type[$key])) {
                         \set_config($cfgname . "type", $data->type[$key], 'booking');
                     }
+                    if (isset($data->options[$key])) {
+                        \set_config($cfgname . "options", $data->options[$key], 'booking');
+                    }
                 }
             }
+
+            $event = \mod_booking\event\custom_field_changed::create(array('objectid' => 0, 'context' => \context_system::instance()));
+            $event->trigger();
         }
         return $data;
     }

@@ -23,11 +23,29 @@
  * @copyright 2014 David Bogner
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+defined('MOODLE_INTERNAL') || die();
+
 $observers = array(
-    array('eventname' => '\core\event\course_module_updated',
-        'callback' => 'mod_booking_observer::course_module_updated'),
     array('eventname' => '\core\event\user_deleted',
         'callback' => 'mod_booking_observer::user_deleted'),
     array('eventname' => '\core\event\user_enrolment_deleted',
-        'callback' => 'mod_booking_observer::user_enrolment_deleted'));
-
+        'callback' => 'mod_booking_observer::user_enrolment_deleted'),
+    array('eventname' => '\mod_booking\event\bookingoption_updated',
+        'callback' => 'mod_booking_observer::bookingoption_updated'
+        ),
+    array('eventname' => '\mod_booking\event\bookingoption_created',
+        'callback' => 'mod_booking_observer::bookingoption_created'
+        ),
+    array('eventname' => '\mod_booking\event\teacher_added',
+        'callback' => 'mod_booking_observer::teacher_added'
+        ),
+    array(
+        'eventname' => '\mod_booking\event\teacher_removed',
+        'callback' => 'mod_booking_observer::teacher_removed'
+        ),
+    array(
+        'eventname' => '\mod_booking\event\custom_field_changed',
+        'callback' => 'mod_booking_observer::custom_field_changed'
+        )
+    );

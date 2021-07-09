@@ -15,16 +15,18 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 namespace mod_booking;
 
+use html_writer;
+use stdClass;
+
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot . '/user/selector/lib.php');
 require_once($CFG->dirroot . '/mod/booking/lib.php');
 require_once($CFG->dirroot . '/mod/booking/locallib.php');
-require_once($CFG->libdir . '/tcpdf/tcpdf.php');
 
 /**
  * Standard base class for mod_booking
- * Module was originally programmed for 1.9 but further adjustments should be made with new Moodle 2.X coding style using this base class.
+ * Module was originally programmed for 1.9 but further adjustments should be made with new
+ * Moodle 2.X coding style using this base class.
  *
  * @package mod_booking
  * @copyright 2013 David Bogner {@link http://www.edulabs.org}
@@ -41,10 +43,10 @@ class booking {
      */
     protected $context = null;
 
-    /** @var \stdClass the course this booking instance belongs to */
+    /** @var stdClass the course this booking instance belongs to */
     public $course = null;
 
-    /** @var \stdClass the course module for this assign instance */
+    /** @var stdClass the course module for this assign instance */
     public $cm = null;
 
     /** @var array of user objects who have capability to book. object contains only id */
@@ -54,7 +56,7 @@ class booking {
     public $groupmembers = array();
 
     /** @var booking booking object from booking instance settings */
-    public $booking;
+    public $settings;
 
     /**
      * @var array $alloptions option objects indexed by optionid
@@ -75,9 +77,9 @@ class booking {
     /**
      * Constructor for the booking class
      *
-     * @param mixed $context context|null the course module context (or the course context if the coursemodule has not been created yet)
-     * @param mixed $coursemodule the current course module if it was already loaded - otherwise this class will load one from the context as required
-     * @param mixed $course the current course if it was already loaded - otherwise this class will load one from the context as required
+     * @param $cmid
+     * @throws \coding_exception
+     * @throws \dml_exception
      */
     public function __construct($cmid) {
         global $DB;
@@ -86,11 +88,12 @@ class booking {
                 'id, fullname, shortname, groupmode, groupmodeforce, visible', MUST_EXIST);
         $this->id = $this->cm->instance;
         $this->context = \context_module::instance($cmid);
-        $this->booking = $DB->get_record("booking", array("id" => $this->id));
-        // if the course has groups and I do not have the capability to see all groups, show only users of my groups
-        if (groups_get_activity_groupmode($this->cm) == SEPARATEGROUPS  &&
-                 !has_capability('moodle/site:accessallgroups', $this->context)) {
-                     list($sql, $params) = $this::booking_get_groupmembers_sql($this->course->id);
+        $this->settings = $DB->get_record("booking", array("id" => $this->id));
+        // If the course has groups and I do not have the capability to see all groups, show only
+        // users of my groups.
+        if (groups_get_activity_groupmode($this->cm) == SEPARATEGROUPS &&
+                !has_capability('moodle/site:accessallgroups', $this->context)) {
+            list($sql, $params) = $this::booking_get_groupmembers_sql($this->course->id);
             $this->groupmembers = $DB->execute($sql, $params);
         }
     }
@@ -104,26 +107,29 @@ class booking {
     }
 
     public function apply_tags() {
-        $tags = new \booking_tags($this->cm);
-        $this->booking = $tags->booking_replace($this->booking);
+        $tags = new booking_tags($this->cm->course);
+        $this->settings = $tags->booking_replace($this->settings);
     }
 
     /**
      *
      */
     public function get_url_params() {
-        $bu = new \booking_utils();
-        $params = $bu->generate_params($this->booking);
-        $this->booking->pollurl = $bu->get_body($this->booking, 'pollurl', $params);
-        $this->booking->pollurlteachers = $bu->get_body($this->booking, 'pollurlteachers', $params);
+        $bu = new booking_utils();
+        $params = $bu->generate_params($this->settings);
+        $this->settings->pollurl = $bu->get_body($this->settings, 'pollurl', $params);
+        $this->settings->pollurlteachers = $bu->get_body($this->settings, 'pollurlteachers', $params);
     }
 
     /**
-     * get all the user ids who are allowed to book capability mod/booking:choose available in $htis->canbookusers
+     * get all the user ids who are allowed to book capability mod/booking:choose available in
+     * $this->canbookusers
      */
     public function get_canbook_userids() {
-        // TODO check if course has guest access if not get all enrolled users and check with has_capability if user has right to book
-        // $this->canbookusers = get_users_by_capability($this->context, 'mod/booking:choose', 'u.id', 'u.lastname ASC, u.firstname ASC', '', '', '',
+        // TODO check if course has guest access if not get all enrolled users and check with
+        // has_capability if user has right to book
+        // $this->canbookusers = get_users_by_capability($this->context, 'mod/booking:choose',
+        // 'u.id', 'u.lastname ASC, u.firstname ASC', '', '', '',
         // '', true, true);
         $this->canbookusers = get_enrolled_users($this->context, 'mod/booking:choose', null, 'u.id');
     }
@@ -147,20 +153,55 @@ class booking {
         return array($groupsql, $params);
     }
 
+    private function searchparameters($searchtext = '') {
+        global $DB;
+        $search = '';
+        $params = array();
+
+        if (!empty($searchtext)) {
+            $searchtext = $DB->sql_like_escape($searchtext);
+            $search = " AND ({$DB->sql_like('bo.text', ':text', false)} OR {$DB->sql_like('bo.location', ':location', false)}" .
+            " OR {$DB->sql_like('bo.institution', ':institution', false)})";
+            $params['text'] = "%{$searchtext}%";
+            $params['location'] = "%{$searchtext}%";
+            $params['institution'] = "%{$searchtext}%";
+        }
+
+        return array('params' => $params, 'query' => $search);
+    }
+
     /**
      * Get all booking options as an array of objects indexed by optionid
      *
      * @return array of booking options records
      */
-    public function get_all_options() {
+    public function get_all_options($limitfrom = 0, $limitnum = 0, $searchtext = '', $fields = "bo.id") {
         global $DB;
-        if (empty($this->alloptions)) {
-            $this->alloptions = $DB->get_records('booking_options', array('bookingid' => $this->id));
-            if (!empty($this->optionids)) {
-                $this->optionids = array_keys($this->alloptions);
-            }
+
+        $limit = '';
+        $rsearch = self::searchparameters($searchtext);
+        $search = $rsearch['query'];
+        $params = array_merge(array('bookingid' => $this->id), $rsearch['params']);
+
+        if ($limitnum != 0) {
+            $limit = " LIMIT {$limitfrom},{$limitnum}";
         }
-        return $this->alloptions;
+
+        return $DB->get_records_sql("SELECT {$fields} FROM {booking_options} bo WHERE bo.bookingid = :bookingid {$search} {$limit}", $params);
+    }
+
+    public function get_all_options_count($searchtext = '') {
+        global $DB;
+
+        $search = '';
+        $params = array();
+
+        $rsearch = self::searchparameters($searchtext);
+
+        $search = $rsearch['query'];
+        $params = array_merge(array('bookingid' => $this->id), $rsearch['params']);
+
+        return $DB->count_records_sql("SELECT COUNT(*) FROM {booking_options} bo WHERE bo.bookingid = :bookingid {$search}", $params);
     }
 
     /**
@@ -175,20 +216,95 @@ class booking {
     }
 
     /**
+     * Get active booking option ids as an array of numbers.
+     *
+     * @param number $bookingid
+     * @return array of ids
+     */
+    public function get_active_optionids($bookingid, $limitfrom = 0, $limitnum = 0, $searchtext = '') {
+        global $DB;
+
+        $limit = '';
+        $rsearch = self::searchparameters($searchtext);
+        $search = $rsearch['query'];
+        $params = array_merge(array('bookingid' => $this->id, 'time' => time()), $rsearch['params']);
+
+        if ($limitnum != 0) {
+            $limit = " LIMIT {$limitfrom},{$limitnum}";
+        }
+
+        return $DB->get_records_sql("SELECT bo.id FROM {booking_options} bo WHERE bo.bookingid = :bookingid AND (bo.courseendtime > :time OR bo.courseendtime = 0)" .
+        " {$search} {$limit}", $params);
+    }
+
+    public function get_active_optionids_count($bookingid, $searchtext = '') {
+        global $DB;
+
+        $search = '';
+        $params = array();
+
+        $rsearch = self::searchparameters($searchtext);
+
+        $search = $rsearch['query'];
+        $params = array_merge(array('bookingid' => $this->id, 'time' => time()), $rsearch['params']);
+
+        return $DB->count_records_sql("SELECT COUNT(*) FROM {booking_options} bo WHERE bo.bookingid = :bookingid AND (bo.courseendtime > :time OR bo.courseendtime = 0)" .
+        " {$search}", $params);
+    }
+
+    /**
      * Get all booking option ids as an array of numbers - only where is teacher.
+     *
+     * @param integer bookingid
+     * @return array of ids
+     */
+    public static function get_all_optionids_of_teacher($bookingid) {
+        global $DB, $USER;
+
+        return $DB->get_fieldset_select('booking_teachers', 'optionid',
+            "userid = {$USER->id} AND bookingid = $bookingid");
+    }
+
+    /**
+     * Get all user booking option ids as an array of numbers.
      *
      * @return array of ids
      */
-    public function get_all_optionids_of_teacher() {
+    public function get_my_bookingids($limitfrom = 0, $limitnum = 0, $searchtext= '') {
         global $DB, $USER;
 
-        return $DB->get_fieldset_select('booking_teachers', 'optionid', "userid = {$USER->id} AND bookingid = {$this->booking->id}");
+        $limit = '';
+        $rsearch = self::searchparameters($searchtext);
+        $search = $rsearch['query'];
+        $params = array_merge(array('bookingid' => $this->id, 'userid' => $USER->id), $rsearch['params']);
+
+        if ($limitnum != 0) {
+            $limit = " LIMIT {$limitfrom},{$limitnum}";
+        }
+
+        return $DB->get_records_sql("SELECT ba.optionid id FROM {booking_options} bo LEFT JOIN {booking_answers} ba ON ba.optionid = bo.id WHERE" .
+                " ba.bookingid = :bookingid AND ba.userid = :userid {$search} {$limit}", $params);
+    }
+
+    public function get_my_bookingids_count($searchstring = '') {
+        global $DB, $USER;
+
+        $search = '';
+        $params = array();
+
+        $rsearch = self::searchparameters($searchstring);
+
+        $search = $rsearch['query'];
+        $params = array_merge(array('bookingid' => $this->id, 'userid' => $USER->id), $rsearch['params']);
+
+        return $DB->count_records_sql("SELECT COUNT(*) FROM {booking_options} bo LEFT JOIN {booking_answers} ba ON ba.optionid = bo.id" .
+                " WHERE ba.bookingid = :bookingid AND ba.userid = :userid {$search}", $params);
     }
 
     /**
      * Display a message about the maximum nubmer of bookings this user is allowed to make.
      *
-     * @param \stdClass $user
+     * @param stdClass $user
      * @return string
      */
     public function show_maxperuser($user) {
@@ -196,33 +312,33 @@ class booking {
 
         $warning = '';
 
-        if (!empty($this->booking->banusernames)) {
-            $disabledusernames = explode(',', $this->booking->banusernames);
+        if (!empty($this->settings->banusernames)) {
+            $disabledusernames = explode(',', $this->settings->banusernames);
 
             foreach ($disabledusernames as $value) {
                 if (strpos($USER->username, trim($value)) !== false) {
-                    $warning = \html_writer::tag('p', get_string('banusernameswarning', 'mod_booking'));
+                    $warning = html_writer::tag('p', get_string('banusernameswarning', 'mod_booking'));
                 }
             }
         }
 
-        if (!$this->booking->maxperuser) {
+        if (!$this->settings->maxperuser) {
             return $warning; // No per-user limits.
         }
 
-        $outdata = new \stdClass();
-        $outdata->limit = $this->booking->maxperuser;
+        $outdata = new stdClass();
+        $outdata->limit = $this->settings->maxperuser;
         $outdata->count = $this->get_user_booking_count($user);
-        $outdata->eventtype = $this->booking->eventtype;
+        $outdata->eventtype = $this->settings->eventtype;
 
-        $warning .= \html_writer::tag('div', get_string('maxperuserwarning', 'mod_booking', $outdata), array ('class' => 'alert alert-warning'));
+        $warning .= html_writer::tag('div', get_string('maxperuserwarning', 'mod_booking', $outdata), array ('class' => 'alert alert-warning'));
         return $warning;
     }
 
     /**
      * Determins the number of bookings that a single user has already made in all booking options
      *
-     * @param \stdClass $user
+     * @param stdClass $user
      * @return number of bookings made by user
      */
     public function get_user_booking_count($user) {
@@ -230,22 +346,34 @@ class booking {
         if (!empty($this->userbookings)) {
             return $this->userbookings;
         }
-        return $this->userbookings = $DB->count_records('booking_answers',
-                array('bookingid' => $this->id, 'userid' => $user->id));
+
+        $activebookingcount = $DB->count_records_sql("SELECT COUNT(*)
+            FROM {booking_answers} ba
+            LEFT JOIN {booking_options} bo ON bo.id = ba.optionid
+            WHERE ba.bookingid = ?
+            AND ba.userid = ?
+            AND (bo.courseendtime = 0 OR bo.courseendtime > ?)", array($this->id, $user->id, time()));
+
+        return $activebookingcount;
     }
 
     /**
      * Get array of option names, to which user is booked.
      *
-     * @param \stdClass $user
+     * @param stdClass $user
      * @return array of option names
      */
     public function get_user_booking($user) {
         global $DB;
 
-        $sql = 'SELECT bo.id, bo.text FROM {booking_answers} ba LEFT JOIN {booking_options} bo ON bo.id = ba.optionid WHERE bo.bookingid = ? AND ba.userid = ?';
+        $sql = 'SELECT bo.id, bo.text
+                FROM {booking_answers} ba
+                LEFT JOIN {booking_options} bo
+                ON bo.id = ba.optionid
+                WHERE bo.bookingid = ?
+                AND ba.userid = ?';
 
-        return $DB->get_records_sql($sql, array($this->booking->id, $user->id));
+        return $DB->get_records_sql($sql, array($this->settings->id, $user->id));
     }
 
     /**
@@ -255,7 +383,7 @@ class booking {
      */
     public function get_fields() {
         global $DB;
-        $reportfields = explode(',', $this->booking->reportfields);
+        $reportfields = explode(',', $this->settings->reportfields);
         list($addquoted, $addquotedparams) = $DB->get_in_or_equal($reportfields);
 
         $userprofilefields = $DB->get_records_select('user_info_field',
@@ -272,7 +400,7 @@ class booking {
                     break;
                 case 'booking':
                     $columns[] = 'booking';
-                    $headers[] = get_string("booking", "booking");
+                    $headers[] = get_string("bookingoptionname", "booking");
                     break;
                 case 'institution':
                     if (has_capability('moodle/site:viewuseridentity', $this->context)) {
@@ -293,7 +421,7 @@ class booking {
                     $headers[] = get_string("courseendtime", "booking");
                     break;
                 case 'numrec':
-                    if ($this->booking->numgenerator) {
+                    if ($this->settings->numgenerator) {
                         $columns[] = 'numrec';
                         $headers[] = get_string("numrec", "booking");
                     }
@@ -318,16 +446,20 @@ class booking {
                     $columns[] = 'email';
                     $headers[] = get_string("email");
                     break;
+                case 'city':
+                    $columns[] = 'city';
+                    $headers[] = get_string("city");
+                    break;
                 case 'completed':
                     $columns[] = 'completed';
-                    $headers[] = get_string("searchfinished", "booking");
+                    $headers[] = get_string("completed", "booking");
                     break;
                 case 'waitinglist':
                     $columns[] = 'waitinglist';
                     $headers[] = get_string("waitinglist", "booking");
                     break;
                 case 'status':
-                    if ($this->booking->enablepresence) {
+                    if ($this->settings->enablepresence) {
                         $columns[] = 'status';
                         $headers[] = get_string('presence', 'mod_booking');
                     }
@@ -336,8 +468,13 @@ class booking {
                     $columns[] = 'groups';
                     $headers[] = get_string("group");
                     break;
+                case 'notes':
+                    $columns[] = 'notes';
+                    $headers[] = get_string('notes', 'mod_booking');
+                    break;
                 case 'idnumber':
-                    if ($DB->count_records_select('user', ' idnumber <> \'\'') > 0 && has_capability('moodle/site:viewuseridentity', $this->context)) {
+                    if ($DB->count_records_select('user', ' idnumber <> \'\'') > 0 &&
+                            has_capability('moodle/site:viewuseridentity', $this->context)) {
                         $columns[] = 'idnumber';
                         $headers[] = get_string("idnumber");
                     }

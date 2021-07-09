@@ -23,6 +23,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * @param int $oldversion the version we are upgrading from
  * @return bool result
@@ -32,26 +34,24 @@ function xmldb_filter_generico_upgrade($oldversion) {
 
     $dbman = $DB->get_manager();
 
-
     if ($oldversion < 2015080301) {
-        
-        
-         $conf = get_object_vars(get_config('filter_generico'));
 
-	
-	   //determine which template we are using
-		for($tempindex=1;$tempindex<=20;$tempindex++){
-			switch ($conf['templatekey_' . $tempindex]){
-				case 'lightboxyoutube':
-				case 'piechart':
-				case 'barchart':
-				case 'linechart':
-					set_config('filter_generico/template_amd_' . $tempindex,0,'filter_generico');
-					break;
-				default:
-					set_config('template_amd_' . $tempindex,1,'filter_generico');
-			}
-		}
+
+        $conf = get_object_vars(get_config('filter_generico'));
+
+        //determine which template we are using
+        for ($tempindex = 1; $tempindex <= 20; $tempindex++) {
+            switch ($conf['templatekey_' . $tempindex]) {
+                case 'lightboxyoutube':
+                case 'piechart':
+                case 'barchart':
+                case 'linechart':
+                    set_config('filter_generico/template_amd_' . $tempindex, 0, 'filter_generico');
+                    break;
+                default:
+                    set_config('template_amd_' . $tempindex, 1, 'filter_generico');
+            }
+        }
 
         upgrade_plugin_savepoint(true, 2015080301, 'filter', 'generico');
     }
@@ -61,16 +61,16 @@ function xmldb_filter_generico_upgrade($oldversion) {
         //Add the template name to the template
         $conf = get_config('filter_generico');
         //Get template count
-        if(property_exists($conf,'templatecount')){
+        if (property_exists($conf, 'templatecount')) {
             $templatecount = $conf->templatecount;
-        }else{
-            $templatecount =  \filter_generico\generico_utils::FILTER_GENERICO_TEMPLATE_COUNT;
+        } else {
+            $templatecount = \filter_generico\generico_utils::FILTER_GENERICO_TEMPLATE_COUNT;
         }
 
         //determine which template we are using
-        for($tempindex=1;$tempindex<=$templatecount;$tempindex++){
-            if(property_exists($conf,'templatekey_' . $tempindex)){
-                set_config('templatename_' . $tempindex,$conf->{'templatekey_' . $tempindex},'filter_generico');
+        for ($tempindex = 1; $tempindex <= $templatecount; $tempindex++) {
+            if (property_exists($conf, 'templatekey_' . $tempindex)) {
+                set_config('templatename_' . $tempindex, $conf->{'templatekey_' . $tempindex}, 'filter_generico');
             }
         }
         upgrade_plugin_savepoint(true, 2017032405, 'filter', 'generico');
