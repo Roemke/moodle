@@ -53,3 +53,4 @@ moodle-plugin-ci.phar
 /jsdoc
 phpcs.xml
 jsconfig.json
+/ownCSV/
