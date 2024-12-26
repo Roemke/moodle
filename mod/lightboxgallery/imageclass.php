@@ -65,10 +65,25 @@ class lightboxgallery_image {
         $this->cmid = $cm->id;
         $this->context = context_module::instance($cm->id);
 
-        $this->imageurl = $CFG->wwwroot.'/pluginfile.php/'.$this->context->id.'/mod_lightboxgallery/gallery_images/'.
-                           $this->storedfile->get_itemid().$this->storedfile->get_filepath().$this->storedfile->get_filename();
-        $this->thumburl = $CFG->wwwroot.'/pluginfile.php/'.$this->context->id.'/mod_lightboxgallery/gallery_thumbs/0'.
-                           $this->storedfile->get_filepath().$this->storedfile->get_filename().'.png';
+        $this->imageurl = moodle_url::make_pluginfile_url($this->context->id,
+            'mod_lightboxgallery',
+            'gallery_images',
+            $this->storedfile->get_itemid(),
+            $this->storedfile->get_filepath(),
+            $this->storedfile->get_filename());
+        $this->imageurl->param('mtime', $this->storedfile->get_timemodified());
+
+        $this->thumburl = moodle_url::make_pluginfile_url($this->context->id,
+            'mod_lightboxgallery',
+            'gallery_thumbs',
+            0,
+            $this->storedfile->get_filepath(),
+            $this->storedfile->get_filename().'.png');
+        $this->thumburl->param('mtime', $this->storedfile->get_timemodified());
+
+        if ($this->storedfile->get_mimetype() == 'image/svg+xml') {
+            $this->thumburl = $this->imageurl;
+        }
 
         if ($loadextrainfo) {
             $imageinfo = $this->storedfile->get_imageinfo();
@@ -99,6 +114,12 @@ class lightboxgallery_image {
     }
 
     public function create_thumbnail($offsetx = 0, $offsety = 0) {
+        if ($this->storedfile->get_mimetype() == 'image/svg+xml'
+            || $this->width === null || $this->height === null) {
+            // We can't resize SVG or files we don't know the dimensions of.
+            return $this->storedfile;
+        }
+
         $fileinfo = array(
             'contextid' => $this->context->id,
             'component' => 'mod_lightboxgallery',
@@ -130,7 +151,7 @@ class lightboxgallery_image {
         $base = imagecreatefrompng($CFG->dirroot.'/mod/lightboxgallery/pix/index.png');
         $transparent = imagecolorat($base, 0, 0);
 
-        $shrunk = imagerotate($this->get_image_resized(48, 48, 0, 0), 351, $transparent, 0);
+        $shrunk = imagerotate($this->get_image_resized(48, 48, 0, 0), 351, $transparent);
 
         imagecolortransparent($base, $transparent);
 
@@ -195,21 +216,34 @@ class lightboxgallery_image {
     private function get_editing_options() {
         global $CFG;
 
+        $options = [
+            'caption',
+            'delete',
+            'flip',
+            'resize',
+            'rotate',
+            'tag',
+            'thumbnail',
+        ];
+
+        if ($this->storedfile->get_mimetype() == 'image/svg+xml') {
+            $options = [
+                'caption',
+                'delete',
+                'tag',
+            ];
+        }
+
         $html = '<form action="'.$CFG->wwwroot.'/mod/lightboxgallery/imageedit.php" method="post"/>'.
                     '<input type="hidden" name="id" value="'.$this->cmid.'" />'.
                     '<input type="hidden" name="image" value="'.$this->storedfile->get_filename().'" />'.
                     '<input type="hidden" name="page" value="0" />'.
                     '<select name="tab" class="lightbox-edit-select" onchange="submit();">'.
-                        '<option disabled selected>'.get_string('edit_choose', 'lightboxgallery').'</option>'.
-                        '<option value="caption">'.get_string('edit_caption', 'lightboxgallery').'</option>'.
-                        '<!--<option value="crop">'.get_string('edit_crop', 'lightboxgallery').'</option>-->'.
-                        '<option value="delete">'.get_string('edit_delete', 'lightboxgallery').'</option>'.
-                        '<option value="flip">'.get_string('edit_flip', 'lightboxgallery').'</option>'.
-                        '<option value="resize">'.get_string('edit_resize', 'lightboxgallery').'</option>'.
-                        '<option value="rotate">'.get_string('edit_rotate', 'lightboxgallery').'</option>'.
-                        '<option value="tag">'.get_string('edit_tag', 'lightboxgallery').'</option>'.
-                        '<option value="thumbnail">'.get_string('edit_thumbnail', 'lightboxgallery').'</option>'.
-                    '</select>'.
+                        '<option disabled selected>'.get_string('edit_choose', 'lightboxgallery').'</option>';
+        foreach ($options as $option) {
+            $html .= '<option value="'.$option.'">'.get_string('edit_'.$option, 'lightboxgallery').'</option>';
+        }
+        $html .= '</select>'.
                 '</form>';
 
         return $html;
@@ -241,7 +275,7 @@ class lightboxgallery_image {
         } else {
             $caption = lightboxgallery_resize_text($this->get_image_caption(), MAX_IMAGE_LABEL);
         }
-        $timemodified = strftime(get_string('strftimedatetimeshort', 'langconfig'), $this->storedfile->get_timemodified());
+        $timemodified = userdate($this->storedfile->get_timemodified(), get_string('strftimedatetimeshort', 'langconfig'));
         $filesize = round($this->storedfile->get_filesize() / 100) / 10;
 
         // Hide the caption.

@@ -31,17 +31,18 @@ class backup_board_activity_structure_step extends backup_activity_structure_ste
 
         $userinfo = $this->get_setting_value('userinfo');
 
-        $board = new backup_nested_element('board', array('id'), array(
+        $board = new backup_nested_element('board', ['id'], [
             'course', 'name', 'timemodified', 'intro', 'introformat', 'historyid',
             'background_color', 'addrating', 'hideheaders', 'sortby', 'postby', 'userscanedit', 'singleusermode',
-            'completionnotes'));
+            'completionnotes', 'embed']);
 
         $columns = new backup_nested_element('columns');
         $column = new backup_nested_element('column', array('id'), array('boardid', 'name', 'sortorder'));
 
         $notes = new backup_nested_element('notes');
         $note = new backup_nested_element('note', array('id'), array(
-            'columnid', 'ownerid', 'userid', 'groupid', 'content', 'heading', 'type', 'info', 'url', 'timecreated'));
+            'columnid', 'ownerid', 'userid', 'groupid', 'content', 'heading', 'type', 'info', 'url', 'timecreated',
+            'sortorder', 'deleted'));
 
         $ratings = new backup_nested_element('ratings');
         $rating = new backup_nested_element('rating', array('id'), array(
@@ -49,7 +50,7 @@ class backup_board_activity_structure_step extends backup_activity_structure_ste
 
         $comments = new backup_nested_element('comments');
         $comment = new backup_nested_element('comment', array('id'), array(
-            'noteid', 'userid', 'content', 'timecreated', 'timemodified'));
+            'noteid', 'userid', 'content', 'timecreated', 'timemodified', 'deleted'));
 
         $comments->add_child($comment);
         $note->add_child($comments);
@@ -79,7 +80,7 @@ class backup_board_activity_structure_step extends backup_activity_structure_ste
 
         $note->annotate_files('mod_board', 'images', null);
         $board->annotate_files('mod_board', 'background', null);
-
+        $board->annotate_files('mod_board', 'intro', null);
         return $this->prepare_activity_structure($board);
     }
 }

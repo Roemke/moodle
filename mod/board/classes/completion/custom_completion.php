@@ -59,7 +59,7 @@ class custom_completion extends activity_custom_completion {
                             AND bc.boardid = :boardid";
 
         if ($rule == 'completionnotes') {
-            $status = $board->completionnotes <= $DB->get_field_sql($postcountsql, $postcountparams);
+            $status = $board->completionnotes <= $DB->get_field_sql($notescountsql, $notescountparams);
         }
 
         return $status ? COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
@@ -85,7 +85,7 @@ class custom_completion extends activity_custom_completion {
         $completionnotes = $this->cm->customdata['customcompletionrules']['completionnotes'] ?? 0;
 
         return [
-            'completionnotes' => get_string('completiondetail:completionnotes', 'mod_board', $completionnotes)
+            'completionnotes' => get_string('completiondetail:notes', 'mod_board', $completionnotes)
         ];
     }
 

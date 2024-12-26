@@ -1,8 +1,65 @@
 Release Notes
 
-_NOTE - This release will work on Moodle 3.9 and Moodle 3.10._
+_NOTE - This release will work on Moodle 4.00, 4.01, 4.02 & 4.03_
 
-##### 1.39.07 (Build 2022101201)
+##### 1.401.04 (Build 2022040116)
+
+New features / improvements:
+
+* Adding configurable logging values.
+* Adding more complete activity description for activity chooser.
+* Ability to configure if embedded option is available or not.
+
+Bug fixes:
+
+* Fix hidden emails not showing without relevant permissions.
+* Fix description duplication on some themes.
+* Fix AMD bug with undefined $.
+* Fix table dynamic properties.
+
+_NOTE - This release will work on Moodle 4.00, 4.01, 4.02 & 4.03_
+
+##### 1.401.03 (Build 2022040112)
+
+New features / improvements:
+
+* Adding 4.03 support.
+
+Bug fixes:
+
+* Fix 4.03 default activity completion.
+* Fix 4.03 embed display.
+
+_NOTE - This release will work on Moodle 4.00, 4.01 & 4.02. (4.3 has not been released yet)_
+
+##### 1.401.02 (Build 2022040111)
+
+New features / improvements:
+
+* Adding 4.01, 4.02, and PHP8.1 support.
+* New board icon.
+* Allow undo rate post option.
+* Support svg image format.
+* New Admin setting to control usage of singleuser board types.
+* Keep board comments in the database for auditing / reporting.
+
+Bug fixes:
+
+* Fix invalid external service parameter type.
+* Backup / restore info for images and link replacements.
+* Fix board error on single activity course format.
+* Set correct aria label to column lock icon.
+* Fix board error on single activity course format.
+* Get board configuration using webservice.
+* Show board title and link to board in page when embedded.
+* Fix board column sorting in non-single user mode and prevent text overflowing the post container.
+* Fix / reverse button order for post cancel in add post modal.
+* Fix delete/post comment duplication.
+* Remove the requirement to set grouping.
+
+_NOTE - This release will work on Moodle 4.00._
+
+##### 1.400.01 (Build 2022101201)'
 
 * Added a single user mode.
 * In single user mode a teacher can post on your board.
@@ -16,6 +73,7 @@ _NOTE - This release will work on Moodle 3.9 and Moodle 3.10._
 * Allow columns to be locked.
 * Enable commenting functionality on each post when opened in overlay.
 * Change loglevel for actions to be 'participating'.
+* Add ability to embed board on the course page.
 * Add ability to embed board on the course page.
 * Ensure move icon has proper aria labelling.
 * Ensure all keyboard controls work in the View Post popup.

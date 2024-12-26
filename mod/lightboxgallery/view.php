@@ -37,16 +37,15 @@ $id = optional_param('id', 0, PARAM_INT);
 $l = optional_param('l', 0, PARAM_INT);
 $page = optional_param('page', 0, PARAM_INT);
 $search  = optional_param('search', '', PARAM_TEXT);
-$editing = optional_param('editing', 0, PARAM_BOOL);
 
 if ($id) {
     list($course, $cm) = get_course_and_cm_from_cmid($id, 'lightboxgallery');
     if (!$gallery = $DB->get_record('lightboxgallery', array('id' => $cm->instance))) {
-        print_error('invalidcoursemodule');
+        throw new \moodle_exception('invalidcoursemodule');
     }
 } else {
     if (!$gallery = $DB->get_record('lightboxgallery', array('id' => $l))) {
-        print_error('invalidlightboxgalleryid', 'lightboxgallery');
+        throw new \moodle_exception('invalidlightboxgalleryid', 'lightboxgallery');
     }
     list($course, $cm) = get_course_and_cm_from_instance($gallery, 'lightboxgallery');
 }
@@ -62,7 +61,7 @@ if ($gallery->ispublic) {
 }
 
 $context = context_module::instance($cm->id);
-
+$editing = $PAGE->user_is_editing();
 if ($editing) {
     require_capability('mod/lightboxgallery:edit', $context);
 }
@@ -91,14 +90,6 @@ $PAGE->set_cm($cm);
 $PAGE->set_url('/mod/lightboxgallery/view.php', array('id' => $cm->id));
 $PAGE->set_title($gallery->name);
 $PAGE->set_heading($course->fullname);
-$button = '';
-if (has_capability('mod/lightboxgallery:edit', $context)) {
-    $urlparams = array('id' => $id, 'page' => $page, 'editing' => $editing ? '0' : '1');
-    $url = new moodle_url('/mod/lightboxgallery/view.php', $urlparams);
-    $strediting = get_string('turnediting'.($editing ? 'off' : 'on'));
-    $button = $OUTPUT->single_button($url, $strediting, 'get').' ';
-}
-$PAGE->set_button($button);
 $PAGE->requires->css('/mod/lightboxgallery/assets/skins/sam/gallery-lightbox-skin.css');
 $PAGE->requires->yui_module('moodle-mod_lightboxgallery-lightbox', 'M.mod_lightboxgallery.init');
 
@@ -113,11 +104,6 @@ if ($allowrssfeed) {
 
 echo $OUTPUT->header();
 
-echo $OUTPUT->heading($heading);
-
-if ($gallery->intro && !$editing) {
-    echo $OUTPUT->box(format_module_intro('lightboxgallery', $gallery, $cm->id), 'generalbox', 'intro');
-}
 if ($gallery->autoresize == AUTO_RESIZE_SCREEN || $gallery->autoresize == AUTO_RESIZE_BOTH) {
     $resizecss = ' autoresize';
 } else {
@@ -186,4 +172,3 @@ if (!$editing && $gallery->comments && has_capability('mod/lightboxgallery:viewc
 }
 
 echo $OUTPUT->footer();
-

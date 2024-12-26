@@ -26,17 +26,38 @@ defined('MOODLE_INTERNAL') || die;
 
 $string['pluginname'] = 'Board';
 $string['modulename'] = 'Board';
-$string['modulename_help'] = 'This is a new activity for Moodle that enables a teacher to create a new “postit” board.';
+$string['modulename_help'] = 'The board activity enables students to engage in discussions and thought-sharing anonymously, via a post-it board.
+
+Students can create posts to display content, such as text, images, URL links, or embedded videos.
+
+The teacher can create boards with a number of different configurations, including:
+
+* Rating posts.
+* Commenting on posts.
+* Group or single-user modes.
+* Completion options.
+* Teacher download options.
+
+Boards may be used
+
+* As introductions / icebreakers.
+* As crowdsourcing content.
+* As discussion whiteboards.
+* For teacher feedback on sessions.';
 $string['modulenameplural'] = 'Boards';
 $string['board:addinstance'] = 'Add a new board resource';
 $string['board:deleteallcomments'] = 'View and delete all comments on posts';
 $string['board:postcomment'] = 'Create and view comments on posts';
-$string['board:view'] = 'View board content and manage own posts.';
+$string['board:view'] = 'View board content.';
+$string['board:post'] = 'Manage own posts and potentially rate posts.';
 $string['board:manageboard'] = 'Manage columns and manage all posts.';
 $string['pluginadministration'] = 'Board module administration';
 $string['hideheaders'] = 'Hide column headers from students';
+$string['hidename'] = 'Hide embedded board name (needed on some themes)';
+$string['completiondetail:notes'] = 'Add notes: {$a}';
 $string['completionnotesgroup'] = 'Require notes';
 $string['completionnotes'] = 'Require students this number of notes to complete the activity';
+$string['viewboard'] = 'View board activity';
 
 $string['enableblanktarget'] = 'Enable blank target';
 $string['enableblanktarget_help'] = 'When enabled all links will open in a new tab/window.';
@@ -45,10 +66,12 @@ $string['board_column_locked'] = 'This column is locked and cannot be edited.';
 $string['default_column_heading'] = 'Heading';
 $string['post_button_text'] = 'Post';
 $string['cancel_button_text'] = 'Cancel';
+$string['close_button_text'] = 'Close';
 $string['remove_note_title'] = 'Confirm';
 $string['remove_note_text'] = "Are you sure you want to delete this post and all the data it contains, as this will affect all other users as well?";
 $string['rate_note_title'] = "Confirm";
 $string['rate_note_text'] = 'Are you sure you want to rate this post?';
+$string['rate_remove_note_text'] = 'Are you sure you want to remove the rating for this post?';
 $string['remove_column_title'] = 'Confirm';
 $string['remove_column_text'] = 'Are you sure you want to delete this "{$a}" column and all the posts it contains?';
 $string['note_changed_title'] = 'Confirm';
@@ -102,17 +125,36 @@ $string['embed_width'] = 'Embed width';
 $string['embed_width_desc'] = 'Width to use for the iframe when embedding the board within the course. This should be a valid CSS value, e.g. px, rem, %, etc...';
 $string['embed_height'] = 'Embed height';
 $string['embed_height_desc'] = 'Height to use for the iframe when embedding the board within the course. This should be a valid CSS value, e.g. px, rem, %, etc...';
+$string['embed_allowed'] = 'Allow board embedding';
+$string['embed_allowed_desc'] = 'If activated, the board embedding feature is available in the activity settings.';
 
-$string['export_board'] = 'Export CSV';
+$string['acceptedfiletypeforbackground'] = 'Accepted filetypes for background images.';
+$string['acceptedfiletypeforbackground_desc'] = 'Select the filetypes for background images to be supported.';
+
+$string['acceptedfiletypeforcontent'] = 'Accepted filetypes for content images.';
+$string['acceptedfiletypeforcontent_desc'] = 'Select the filetypes for content to be supported.';
+
+
+$string['export'] = 'Export';
+$string['export_board'] = 'Export Board';
 $string['export_submissions'] = 'Export Submissions';
 $string['export_firstname'] = 'Firstname';
 $string['export_lastname'] = 'Lastname';
 $string['export_email'] = 'Email';
 $string['export_heading'] = 'Post Heading';
-$string['export_content'] = 'Post Text';
-$string['export_info'] = 'Post Title';
-$string['export_url'] = 'Post URL';
+$string['export_content'] = 'Text';
+$string['export_info'] = 'Media Title';
+$string['export_url'] = 'Media URL';
 $string['export_timecreated'] = 'Date created';
+$string['export_deleted'] = 'Deleted';
+$string['export_comment'] = 'Comment';
+$string['export_comments'] = 'Export Comments';
+$string['export_comments_description'] = 'Please choose the which comments you would like to export.';
+$string['export_comments_include_deleted'] = 'You can choose to export all comments including those that have been deleted.';
+$string['export_comments_include_deleted_button'] = 'Export Comments (including deleted)';
+$string['export_backtoboard'] = 'Back to Board';
+$string['export_deleted'] = 'Deleted';
+$string['include_deleted'] = 'Include deleted';
 $string['background_color'] = 'Background color';
 $string['background_color_help'] = 'Should be a valid hex colour, such as #00cc99';
 $string['background_image'] = 'Background Image';
@@ -124,19 +166,19 @@ $string['event_update_column_desc'] = 'The user with id \'{$a->userid}\' updated
 $string['event_delete_column'] = 'Column deleted';
 $string['event_delete_column_desc'] = 'The user with id \'{$a->userid}\' deleted board column with id \'{$a->objectid}\'.';
 $string['event_add_comment'] = 'Comment added';
-$string['event_add_comment_desc'] = 'The user with id \'{$a->userid}\' added a comment with id \'{$a->objectid}\', content \'{$a->content}\' on note id \'{$a->noteid}\'.';
+$string['event_add_comment_desc'] = 'The user with id \'{$a->userid}\' added a comment with id \'{$a->objectid}\', content \'{$a->content}\' on post with id \'{$a->noteid}\'.';
 $string['event_add_note'] = 'Post added';
 $string['event_add_note_desc'] = 'The user with id \'{$a->userid}\' created board post with id \'{$a->objectid}\', heading \'{$a->heading}\', content \'{$a->content}\', media \'{$a->media}\' on column id \'{$a->columnid}\', group id \'{$a->groupid}\'.';
 $string['event_update_note'] = 'Post updated';
 $string['event_update_note_desc'] = 'The user with id \'{$a->userid}\' updated board post with id \'{$a->objectid}\' to heading \'{$a->heading}\', content \'{$a->content}\', media \'{$a->media}\' on column id \'{$a->columnid}\'.';
+$string['event_delete_comment'] = 'Comment deleted';
+$string['event_delete_comment_desc'] = 'The user with id \'{$a->userid}\' deleted post comment with id \'{$a->objectid}\' from post with id \'{$a->noteid}\'.';
 $string['event_delete_note'] = 'Post deleted';
 $string['event_delete_note_desc'] = 'The user with id \'{$a->userid}\' deleted board post with id \'{$a->objectid}\' from column id \'{$a->columnid}\'.';
 $string['event_move_note'] = 'Post moved';
 $string['event_move_note_desc'] = 'The user with id \'{$a->userid}\' moved board post with id \'{$a->objectid}\' to column id \'{$a->columnid}\'.';
 $string['event_rate_note'] = 'Post rated';
 $string['event_rate_note_desc'] = 'The user with id \'{$a->userid}\' rated board post with id \'{$a->objectid}\' to rating \'{$a->rating}\'.';
-
-$string['groupingid_required'] = 'A course grouping must be selected for this group mode.';
 
 $string['aria_newcolumn'] = 'Add new column';
 $string['aria_newpost'] = 'Add new post to column {column}';
@@ -148,7 +190,8 @@ $string['aria_editpost'] = 'Edit post {post}';
 $string['aria_addmedia'] = 'Add {type} for post {post} from column {column}';
 $string['aria_addmedianew'] = 'Add {type} for new post from column {column}';
 $string['aria_deleteattachment'] = 'Delete attachment for post {post} from column {column}';
-$string['aria_lockcolumn'] = 'Lock column {column}';
+$string['aria_column_locked'] = 'Column {$a} locked';
+$string['aria_column_unlocked'] = 'Column {$a} unlocked';
 $string['aria_postedit'] = 'Save post edit for post {post} from column {column}';
 $string['aria_canceledit'] = 'Cancel post edit for post {post} from column {column}';
 $string['aria_postnew'] = 'Save new post for column {column}';
@@ -223,3 +266,17 @@ $string['move_column_to_aftercolumn'] = 'Move column after column {$a}';
 $string['opensinnewwindow'] = 'Opens in new window';
 $string['brickfieldlogo'] = 'Powered by Brickfield logo';
 $string['singleusermodenotembed'] = 'Board does not allow a single user board to be embedded. Please change your settings.';
+$string['allowed_singleuser_modes'] = 'Enabled single user modes';
+$string['allowed_singleuser_modes_desc'] = 'Allow/Disallow usage of certain single user modes. Does not affect already created boards';
+
+$string['settings_heading_logging'] = 'Logging';
+$string['settings_heading_logging_info'] = 'By default, logging will contain content, such as the text of a note, comments, column names, and so on.<br>For data privacy purposes, logging may be configured to exclude some information that has been submitted by users.';
+$string['settings:addcommenttolog'] = 'Add comment to log';
+$string['settings:addcolumnnametolog'] = 'Add column name to log';
+$string['settings:addnotetolog'] = 'Add note to log';
+$string['settings:addheadingtolog'] = 'Add heading to log';
+$string['settings:addattachmenttolog'] = 'Add attachment to log';
+$string['settings:addratingtolog'] = 'Add rating to log';
+$string['settings:enableprivacystatement'] = 'Enable privacy statement';
+$string['settings:enableprivacystatement_desc'] = 'Show privacy statement as part of Board description.';
+$string['privacystatement'] = '<strong>Board Privacy Statement:</strong> Please note that editing teachers, and those with appropriate permissions, are able to view exported data as to which users have created these Board posts and comments.';

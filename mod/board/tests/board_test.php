@@ -17,6 +17,8 @@
 namespace mod_board;
 
 use mod_board\board;
+use cm_info;
+use mod_board\completion\custom_completion;
 
 /**
  * Class board_test.
@@ -335,7 +337,7 @@ class board_test extends \advanced_testcase {
         $note = self::add_note($column->id);
         $result = board::board_can_rate_note($note->id);
 
-        $this->assertTrue($result);
+        $this->assertTrue($result['canrate']);
     }
 
     public function test_board_rating_enabled() {
@@ -405,8 +407,8 @@ class board_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         $this->setAdminUser();
-        $course = $this->getDataGenerator()->create_course();
-        $board = $this->getDataGenerator()->create_module('board', ['course' => $course->id, 'completionnotes' => 2]);
+        $course = $this->getDataGenerator()->create_course(['enablecompletion' => COMPLETION_ENABLED]);
+        $board = $this->getDataGenerator()->create_module('board', ['course' => $course->id, 'completionnotes' => 2, 'completion' => COMPLETION_TRACKING_AUTOMATIC]);
         $column = self::add_column($board->id);
         $attachment = [
             'type' => 0,
@@ -419,12 +421,14 @@ class board_test extends \advanced_testcase {
         $result = board::board_add_note($column->id, $student->id, 'Test heading', 'Test content', $attachment);
 
         $cm = get_coursemodule_from_instance('board', $board->id);
-        $result = board_get_completion_state($course, $cm, $student->id, false);
-        $this->assertEquals(COMPLETION_INCOMPLETE, $result);
+        // Make sure we're using a cm_info object.
+        $cm = cm_info::create($cm);
+        $customcompletion = new custom_completion($cm, (int)$student->id);
+
+        $this->assertEquals(COMPLETION_INCOMPLETE, $customcompletion->get_state('completionnotes'));
 
         $result = board::board_add_note($column->id, $student->id, 'Test heading 2', 'Test content 2', $attachment);
-        $result = board_get_completion_state($course, $cm, $student->id, false);
-        $this->assertEquals(COMPLETION_COMPLETE, $result);
+        $this->assertEquals(COMPLETION_COMPLETE, $customcompletion->get_state('completionnotes'));
     }
 
     /**
