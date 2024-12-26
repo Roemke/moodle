@@ -15,6 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 namespace mod_booking\form;
 
+defined('MOODLE_INTERNAL') || die();
+require_once("$CFG->libdir/formslib.php");
+
 use mod_booking\utils\wb_payment;
 use moodleform;
 use mod_booking\booking;
@@ -33,12 +36,12 @@ class option_form extends moodleform {
         $optiontemplates = array('' => '');
         $alloptiontemplates = $DB->get_records('booking_options', array('bookingid' => 0), '', $fields = 'id, text', 0, 0);
 
-        // if there is no license key and there is more than one template, we only use the first one
+        // If there is no license key and there is more than one template, we only use the first one.
         if (count($alloptiontemplates) > 1 && !wb_payment::is_currently_valid_licensekey()) {
             $alloptiontemplates = [reset($alloptiontemplates)];
-            $mform->addElement('static', 'nolicense', get_string('licensekeycfg', 'mod_booking'), get_string('licensekeycfgdesc', 'mod_booking'));
+            $mform->addElement('static', 'nolicense', get_string('licensekeycfg', 'mod_booking'),
+                get_string('licensekeycfgdesc', 'mod_booking'));
         }
-
 
         foreach ($alloptiontemplates as $key => $value) {
             $optiontemplates[$value->id] = $value->text;
@@ -59,8 +62,8 @@ class option_form extends moodleform {
             $cmid = $this->_customdata['cmid'];
             $booking = new booking($cmid);
         }
-        
-        // Add standard name here:
+
+        // Add standard name here.
         $eventtype = $booking->settings->eventtype;
         if ($eventtype && strlen($eventtype) > 0) {
             $eventtype = "- $eventtype ";
@@ -140,16 +143,9 @@ class option_form extends moodleform {
                 'noselectionstring' => get_string('donotselectinstitution', 'booking'),
                 'tags' => true
         );
-        $mform->addElement('autocomplete', 'institution', get_string('addnewinstitution', 'booking'), $institutionstrings, $options);
+        $mform->addElement('autocomplete', 'institution', get_string('addnewinstitution', 'booking'),
+            $institutionstrings, $options);
         $mform->addHelpButton('institution', 'institution', 'mod_booking');
-
-        $url = $CFG->wwwroot . '/mod/booking/institutions.php';
-        if (isset($COURSE->id)) {
-            $url .= '?courseid=' . $COURSE->id;
-        }
-        $mform->addElement('html',
-                '<a target="_blank" href="' . $url . '">' . get_string('editinstitutions', 'booking') .
-                         '</a>');
 
         $mform->addElement('text', 'address', get_string('address', 'booking'),
                 array('size' => '64'));
@@ -185,7 +181,6 @@ class option_form extends moodleform {
         $allcourses = get_courses_search(array(), 'c.shortname ASC', 0, 9999999,
             $totalcount, array('enrol/manual:enrol'));
 
-        // Old code: $allcourses = $DB->get_records_select('course', 'id > 0', array(), 'id', 'id, shortname');
         foreach ($allcourses as $id => $courseobject) {
             $coursearray[$id] = $courseobject->shortname;
         }
@@ -203,8 +198,7 @@ class option_form extends moodleform {
 
         $caleventtypes = [
             0 => get_string('caldonotadd', 'booking'),
-            1 => get_string('caladdascourseevent', 'booking'),
-            // 2 => get_string('caladdassiteevent', 'booking') // Don't need this yet
+            1 => get_string('caladdascourseevent', 'booking')
         ];
         $mform->addElement('select', 'addtocalendar', get_string('addtocalendar', 'booking'), $caleventtypes);
         $mform->setDefault('addtocalendar', 0);
@@ -314,25 +308,27 @@ class option_form extends moodleform {
         }
 
         // Templates - only visible when adding new.
-        if (has_capability('mod/booking:manageoptiontemplates', $this->_customdata['context']) && $this->_customdata['optionid'] < 1) {
+        if (has_capability('mod/booking:manageoptiontemplates', $this->_customdata['context'])
+            && $this->_customdata['optionid'] < 1) {
 
             $mform->addElement('header', 'templateheader',
                 get_string('addastemplate', 'booking'));
 
             $numberoftemplates = $DB->count_records('booking_options', array('bookingid' => 0));
 
-           if ($numberoftemplates < 1 || wb_payment::is_currently_valid_licensekey()) {
-               $addastemplate = array(
-                       0 => get_string('notemplate', 'booking'),
-                       1 => get_string('asglobaltemplate', 'booking')
-               );
-               $mform->addElement('select', 'addastemplate', get_string('addastemplate', 'booking'),
-                       $addastemplate);
-               $mform->setType('addastemplate', PARAM_INT);
-               $mform->setDefault('addastemplate', 0);
-           } else {
-               $mform->addElement('static', 'nolicense', get_string('licensekeycfg', 'mod_booking'), get_string('licensekeycfgdesc', 'mod_booking'));
-           }
+            if ($numberoftemplates < 1 || wb_payment::is_currently_valid_licensekey()) {
+                $addastemplate = array(
+                        0 => get_string('notemplate', 'booking'),
+                        1 => get_string('asglobaltemplate', 'booking')
+                );
+                $mform->addElement('select', 'addastemplate', get_string('addastemplate', 'booking'),
+                        $addastemplate);
+                $mform->setType('addastemplate', PARAM_INT);
+                $mform->setDefault('addastemplate', 0);
+            } else {
+                $mform->addElement('static', 'nolicense', get_string('licensekeycfg', 'mod_booking'),
+                    get_string('licensekeycfgdesc', 'mod_booking'));
+            }
         }
 
         // Hidden elements.
@@ -424,21 +420,22 @@ class option_form extends moodleform {
         if (!empty($customfields)) {
             foreach ($customfields as $customfieldname => $customfieldarray) {
                 if ($customfieldarray['type'] == 'multiselect') {
-                    $defaultvalues->$customfieldname = explode("\n", (isset($defaultvalues->$customfieldname) ? $defaultvalues->$customfieldname : ''));
+                    $defaultvalues->$customfieldname = explode("\n", (isset($defaultvalues->$customfieldname) ?
+                        $defaultvalues->$customfieldname : ''));
                 }
             }
         }
 
-        $defaultvalues->description = array('text' => (isset($defaultvalues->description) ? $defaultvalues->description : ''),
-            'format' => FORMAT_HTML);
-        $defaultvalues->notificationtext = array('text' => (isset($defaultvalues->notificationtext) ? $defaultvalues->notificationtext : ''),
-            'format' => FORMAT_HTML);
-        $defaultvalues->beforebookedtext = array('text' => (isset($defaultvalues->beforebookedtext) ? $defaultvalues->beforebookedtext : ''),
-            'format' => FORMAT_HTML);
-        $defaultvalues->beforecompletedtext = array('text' => (isset($defaultvalues->beforecompletedtext) ? $defaultvalues->beforecompletedtext : ''),
-            'format' => FORMAT_HTML);
-        $defaultvalues->aftercompletedtext = array('text' => (isset($defaultvalues->aftercompletedtext) ? $defaultvalues->aftercompletedtext : ''),
-            'format' => FORMAT_HTML);
+        $defaultvalues->description = array('text' => (isset($defaultvalues->description) ?
+            $defaultvalues->description : ''), 'format' => FORMAT_HTML);
+        $defaultvalues->notificationtext = array('text' => (isset($defaultvalues->notificationtext) ?
+            $defaultvalues->notificationtext : ''), 'format' => FORMAT_HTML);
+        $defaultvalues->beforebookedtext = array('text' => (isset($defaultvalues->beforebookedtext) ?
+            $defaultvalues->beforebookedtext : ''), 'format' => FORMAT_HTML);
+        $defaultvalues->beforecompletedtext = array('text' => (isset($defaultvalues->beforecompletedtext) ?
+            $defaultvalues->beforecompletedtext : ''), 'format' => FORMAT_HTML);
+        $defaultvalues->aftercompletedtext = array('text' => (isset($defaultvalues->aftercompletedtext) ?
+            $defaultvalues->aftercompletedtext : ''), 'format' => FORMAT_HTML);
 
         if (isset($defaultvalues->bookingclosingtime) && $defaultvalues->bookingclosingtime) {
             $defaultvalues->restrictanswerperiod = "checked";
@@ -449,7 +446,8 @@ class option_form extends moodleform {
 
         $draftitemid = file_get_submitted_draft_itemid('myfilemanageroption');
         file_prepare_draft_area($draftitemid, $this->_customdata['context']->id, 'mod_booking', 'myfilemanageroption',
-            $this->_customdata['optionid'], array('subdirs' => false, 'maxfiles' => 50, 'accepted_types' => array('*'), 'maxbytes' => 0));
+            $this->_customdata['optionid'], array('subdirs' => false, 'maxfiles' => 50,
+            'accepted_types' => array('*'), 'maxbytes' => 0));
         $defaultvalues->myfilemanageroption = $draftitemid;
 
         if ($defaultvalues->optionid > 0) {

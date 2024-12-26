@@ -1087,15 +1087,15 @@ $string['excelfile'] = 'CSV Datei mit Aktivitätsabschluss';
 // Instancetemplateadd.php.
 $string['saveinstanceastemplate'] = 'Buchung als Vorlage hinzufügen';
 $string['thisinstance'] = 'Diese Buchung';
-$string['instancetemplate'] = 'Buchungsvorlage';
+$string['instancetemplate'] = 'Buchungsinstanz-Vorlage';
 $string['instancesuccessfullysaved'] = 'Diese Buchung wurde erfolgreich als Vorlage gespeichert.';
 $string['instance_not_saved_no_valid_license'] = 'Buchung konnte nicht als Vorlage gespeichert werden.
                                                   Holen Sie sich die PRO-Version, um beliebig viele Vorlagen erstellen
                                                   zu können.';
-$string['bookinginstancetemplatessettings'] = 'Buchungsvorlagen';
-$string['bookinginstancetemplatename'] = 'Name der Buchungsvorlage';
-$string['managebookinginstancetemplates'] = 'Buchungsvorlagen verwalten';
-$string['populatefromtemplate'] = 'Mit Buchungvorlage ausfüllen';
+$string['bookinginstancetemplatessettings'] = 'Buchungsinstanz-Vorlagen';
+$string['bookinginstancetemplatename'] = 'Name der Buchungsinstanz-Vorlage';
+$string['managebookinginstancetemplates'] = 'Buchungsinstanz-Vorlagen verwalten';
+$string['populatefromtemplate'] = 'Mit Buchungsinstanz-Vorlage ausfüllen';
 
 // Institutions.php.
 $string['institutions'] = 'Institutionen';
@@ -1268,7 +1268,8 @@ $string['linkgotobookingoption'] = 'Buchung anzeigen: {$a}</a>';
 // Link.php.
 $string['bookingnotopenyet'] = 'Ihr Event startet erst in {$a} Minuten. Dieser Link wird Sie ab 15 Minuten vor dem Event weiterleiten.';
 $string['bookingpassed'] = 'Dieses Event ist nicht mehr aktiv.';
-$string['linknotvalid'] = 'Sie scheinen dieses Meeting nicht gebucht zu haben.';
+$string['linknotvalid'] = 'Dieser Link / dieses Event ist derzeit nicht verfügbar.
+Bitte probieren Sie es kurz vor Beginn noch einmal, wenn Sie dieses Event gebucht haben.';
 
 // Booking_utils.php.
 $string['linknotavailableyet'] = 'Der Link auf die Konferenz ist nur zwischen 15 Minuten vor dem Meeting und dem Enddatum hier verfügbar.';

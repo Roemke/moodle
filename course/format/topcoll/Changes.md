@@ -1,6 +1,10 @@
 ﻿Version Information
 ===================
 
+Version 311.1.1 - 14/08/2023
+-----------------------------
+1. Fix 'Upgrading from Moodle 3.9 sets default values to zero' - #135.
+
 Version 3.11.1.0 - 12/05/22
 -----------------------------
   1. Fix 'Error during course creation if defaultdisplayblocks is empty' - CONTRIB-8824.
