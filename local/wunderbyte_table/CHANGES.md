@@ -1,3 +1,52 @@
+## Version 2.0.43 (2025022600)
+* Improvement: New get_values_array() function for customfields.
+* New feature: Add possibility to show download button at bottom of table.
+* Bugfix: Field property of field controller can be accessed directly without getter.
+* Test: Add test to verify sortorder in infinite scroll environment
+
+## Version 2.0.42 (2025021800)
+* New feature: Callbackfilter
+* New feature: Introduce sortable classes to allow sort specific sql and caches
+* Improvement: Possibility to turn off caching
+* Tests: Add automatic tests for callback filtering and new standard sortable class
+* Tests: Add phpunit test for testing standard filter
+
+## Version 2.0.41 (2025021200)
+* Set minlength to 1 (to also consider input of "AI" in fulltextsearch).
+
+## Version 2.0.40 (2025012900)
+* Bugfix: Avoid empty get_in_or_equal error in function instantiate_by_shortnames of wbt_field_controller_info.
+
+## Version 2.0.39 (2025012200)
+* Bugfix: Hierarchical filter search in menu (#75).
+
+## Version 2.0.38 (2025011602)
+* Bugfix: Make sure that field controller is only applied if the string is not yet localized and sorted with sortedarray.
+* Bugfix: Make sure we use the correct language prefix for storing filter & such
+* Improvement: Apply timezone offset for hourlist filter.
+
+## Version 2.0.37 (2025011601)
+* Bugfix: Fixes for filters using wbt_field_controller.
+
+## Version 2.0.36 (2025011600)
+* Bugfix: Fix README - table setting is called "addcheckboxes".
+* Bugfix: Add fallback for field controller, so we always have at least the text controller.
+
+## Version 2.0.35 (2025010900)
+* Improvement: Implement generic classes for customfields in wunderbyte table and get the string values to be shown in filter from field controller.
+* Improvement: Do not show rows for empty or not found values.
+* Improvement: Add field controllers for text and textarea and return text controller as fallback.
+* Bugfix: Add missing import of wbt_field_controller_info.
+* Bugfix: Correct searchfield SQL for elder moodle with mysql #68.
+* Bugfix: Custom field dynamic needs its own field controller as customfield dynamic might not be installed.
+
+## Version 2.0.34 (2024121200)
+* Bugfix: Datepicker filter correctly applying enddate & unset Datepicker correctly
+
+## Version 2.0.33 (2024120500)
+* Improvement: change filterview template.
+* Bugfix: hourlist filter.
+
 ## Version 2.0.31 (2024112800)
 * New feature: Add possibility to pass any template data.
 * Bugfix: Correct id for filter checkbox & label.

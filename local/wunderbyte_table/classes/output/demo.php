@@ -369,6 +369,7 @@ class demo implements renderable, templatable {
         $table->stickyheader = true;
         $table->showcountlabel = true;
         // $table->showfilterontop = true;
+        // $table->showdownloadbuttonatbottom = true;
         $table->showdownloadbutton = true;
         $table->showreloadbutton = true;
         $table->showrowcountselect = true;
@@ -518,6 +519,8 @@ class demo implements renderable, templatable {
         $table->add_filter($standardfilter);
         $standardfilter = new standardfilter('idnumber',  get_string('idnumber', 'local_wunderbyte_table'));
         $table->add_filter($standardfilter);
+        $hourslistfilter = new hourlist('added', "Added");
+        $table->add_filter($hourslistfilter);
 
         //$table->define_fulltextsearchcolumns(array_keys($filtercolumns));
         $table->define_sortablecolumns(['id', 'course', 'module', 'idnumber']);

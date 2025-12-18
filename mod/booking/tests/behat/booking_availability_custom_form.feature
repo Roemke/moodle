@@ -16,6 +16,7 @@ Feature: Create custom availability form for booking options as admin and bookin
       | student1 | Student   | 1        | student1@example.com | S1       | default                    |
       | student2 | Student   | 2        | student2@example.com | S2       | discount1                  |
       | student3 | Student   | 3        | student3@example.com | S3       | discount2                  |
+    And I clean booking cache
     And the following "core_payment > payment accounts" exist:
       | name           |
       | Account1       |
@@ -44,7 +45,7 @@ Feature: Create custom availability form for booking options as admin and bookin
       | activity | course | name       | intro               | bookingmanager | eventtype | Default view for booking options |
       | booking  | C1     | BookingCMP | Booking description | teacher1       | Webinar   | All bookings                     |
     And the following "mod_booking > options" exist:
-      | booking     | text         | course | description | useprice | maxanswers | datesmarker | optiondateid_1 | daystonotify_1 | coursestarttime_1 | courseendtime_1 |
+      | booking     | text         | course | description | useprice | maxanswers | datesmarker | optiondateid_0 | daystonotify_0 | coursestarttime_0 | courseendtime_0 |
       | BookingCMP  | Option-form  | C1     | Price-form  | 1        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +2 days ##   |
     And I change viewport size to "1366x10000"
 

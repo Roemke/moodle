@@ -37,7 +37,7 @@ function migrate_booking_option_identifiers_2022090802() {
                 if (strpos($record->text, $separator) == false) {
                     continue;
                 }
-                list($name, $identifier) = explode($separator, $record->text);
+                [$name, $identifier] = explode($separator, $record->text);
                 /* Example: MyOption#?#4eded74a => the name "MyOption" will be restored
                 and the identifier "4eded74a" will be moved to the identifier field. */
                 $record->identifier = $identifier;
@@ -148,10 +148,31 @@ function fix_places_for_booking_answers() {
     global $DB;
 
     // Define your SQL update query.
-    $sql = "UPDATE {booking_answers} SET places = :places";
+    $sql = "UPDATE {booking_answers}
+               SET places = 1
+             WHERE places IS NULL";
+
+    // Execute the query.
+    $DB->execute($sql);
+}
+
+/**
+ * Remove values form completiongradeitemnumber and completionpassgrade to avoid #779 error after #629.
+ *
+ * @return void
+ */
+function remove_completiongradeitemnumber_2025010803() {
+    global $DB;
+
+    $bookingmoduleid = $DB->get_field('modules', 'id', ['name' => 'booking']);
+
+    // Define your SQL update query.
+    $sql = "UPDATE {course_modules}
+        SET completiongradeitemnumber = null, completionpassgrade = 0
+        WHERE module = :bookigmodules";
 
     // Define the parameters for the query.
-    $params = ['places' => 1];
+    $params = ['bookigmodules' => $bookingmoduleid];
 
     // Execute the query.
     $DB->execute($sql, $params);

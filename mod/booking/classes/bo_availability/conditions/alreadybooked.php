@@ -45,7 +45,6 @@ require_once($CFG->dirroot . '/mod/booking/lib.php');
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class alreadybooked implements bo_condition {
-
     /** @var int $id Standard Conditions have hardcoded ids. */
     public $id = MOD_BOOKING_BO_COND_ALREADYBOOKED;
 
@@ -100,7 +99,6 @@ class alreadybooked implements bo_condition {
 
         // If the user is not yet booked we return true.
         if (!isset($bookinginformation['iambooked'])) {
-
             $isavailable = true;
         }
 
@@ -215,8 +213,10 @@ class alreadybooked implements bo_condition {
     ): array {
 
         $link = '';
-        if (get_config('booking', 'linktomoodlecourseonbookedbutton')
-            && !empty($settings->courseid)) {
+        if (
+            get_config('booking', 'linktomoodlecourseonbookedbutton')
+            && !empty($settings->courseid)
+        ) {
             $label = get_string('coursestart', 'mod_booking');
             $url = new \moodle_url('/course/view.php', ['id' => $settings->courseid]);
             $link = $url->out();
@@ -229,7 +229,7 @@ class alreadybooked implements bo_condition {
             $userid,
             $label,
             $link !== '' ? 'bookinglinkbutton btn btn-primary' : 'alert alert-success',
-            true,
+            false,
             $fullwidth,
             'alert',
             'option',

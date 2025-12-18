@@ -20,6 +20,7 @@ Feature: In a booking create booking option with multiple custom options
       | admin1   | C1     | manager        |
       | student1 | C1     | student        |
       | student2 | C1     | student        |
+    And I clean booking cache
     And the following "activities" exist:
       | activity | course | name       | intro                  | bookingmanager | eventtype | Default view for booking options | Activate e-mails (confirmations, notifications and more) | Booking option name  |
       | booking  | C1     | My booking | My booking description | teacher1       | Webinar   | All bookings                     | Yes                                                      | New option - Webinar |
@@ -34,6 +35,10 @@ Feature: In a booking create booking option with multiple custom options
       | 1        | default       | Base Price    | 70           | 0        | 1                 |
       | 2        | specialprice  | Special Price | 60           | 0        | 2                 |
     And I create booking option "New option - duplication source" in "My booking"
+    ## Unfortunately, TinyMCE is slow and has misbehavior which might cause number of site-wide issues. So - we disable it.
+    And the following config values are set as admin:
+      | config      | value         |
+      | texteditors | atto,textarea |
     And I change viewport size to "1366x10000"
 
   @javascript

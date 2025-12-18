@@ -100,8 +100,9 @@ class dates {
                 $semesterid = $formdata['semesterid'] ?? $bookingoptionsettings->semesterid;
                 $dayofweektime = $formdata['dayofweektime'] ?? $bookingoptionsettings->dayofweektime;
             }
-            // Get semester from bookingsetting if still empty.
-            if (empty($semesterid)) {
+            // Get semester from bookingsetting if it's still NULL.
+            // But if it's 0, we keep it 0 because this might be intended!
+            if (is_null($semesterid)) {
                 $semesterid = $bookingsettings->semesterid;
             }
 
@@ -269,7 +270,12 @@ class dates {
             );
         } else if (!empty($defaultvalues->id)) {
             $settings = singleton_service::get_instance_of_booking_option_settings($defaultvalues->id);
-            $sessions = $settings->sessions;
+            // Make sure, no sessions are created for self-learning courses.
+            if (empty($settings->selflearningcourse)) {
+                $sessions = $settings->sessions;
+            } else {
+                $sessions = [];
+            }
             $defaultvalues->datescounter = $datescounter;
         }
 
@@ -615,6 +621,11 @@ class dates {
         ) {
             return [];
         }
+
+        if (!empty($formdata->selflearningcourse)) {
+            return [];
+        }
+
         $newvalue = array_merge($newvalues, $datestosave);
         $changes = [
             'changes' => [

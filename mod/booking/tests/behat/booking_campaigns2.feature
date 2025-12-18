@@ -32,6 +32,7 @@ Feature: Create booking campaigns2 for booking options as admin and booking it a
       | student6 | C1     | student        |
       | student7 | C1     | student        |
       | student8 | C1     | student        |
+    And I clean booking cache
     And the following "activities" exist:
       | activity | course | name       | intro               | bookingmanager | eventtype | Default view for booking options | Send confirmation e-mail |
       | booking  | C1     | BookingCMP | Booking description | teacher1       | Webinar   | All bookings                     | Yes                      |
@@ -47,12 +48,12 @@ Feature: Create booking campaigns2 for booking options as admin and booking it a
       | 2        | discount1  | Disc1 | 77           | 0        | 2                 |
       | 3        | discount2  | Disc2 | 66           | 0        | 3                 |
     And the following "mod_booking > options" exist:
-      | booking     | text                | course | description     | customfield_bcustom1 | useprice | maxanswers | datesmarker | optiondateid_1 | daystonotify_1 | coursestarttime_1 | courseendtime_1 |
-      | BookingCMP  | Option-exclude      | C1     | NoPrice-exclude | exclude              | 0        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +2 days ##   |
-      | BookingCMP  | Option-nocustom     | C1     | nocustom        |                      | 0        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +2 days ##   |
-      | BookingCMP  | Option-include      | C1     | NoPrice-include | include              | 0        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +3 days ##   |
-      | BookingCMP  | Option-priceexclude | C1     | Price-exclude   | exclude              | 1        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +3 days ##   |
-      | BookingCMP  | Option-priceinclude | C1     | Price-include   | include              | 1        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +3 days ##   |
+      | booking     | text                | course | description     | importing | bcustom1 | useprice | maxanswers | datesmarker | optiondateid_0 | daystonotify_0 | coursestarttime_0 | courseendtime_0 |
+      | BookingCMP  | Option-exclude      | C1     | NoPrice-exclude | 1         | exclude  | 0        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +2 days ##   |
+      | BookingCMP  | Option-nocustom     | C1     | nocustom        | 1         |          | 0        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +2 days ##   |
+      | BookingCMP  | Option-include      | C1     | NoPrice-include | 1         | include  | 0        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +3 days ##   |
+      | BookingCMP  | Option-priceexclude | C1     | Price-exclude   | 1         | exclude  | 1        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +3 days ##   |
+      | BookingCMP  | Option-priceinclude | C1     | Price-include   | 1         | include  | 1        | 6          | 1           | 0              | 0              | ## tomorrow ##    | ## +3 days ##   |
     And the following "mod_booking > answers" exist:
       | booking    | option         | user     |
       | BookingCMP | Option-exclude | student4 |
@@ -75,7 +76,7 @@ Feature: Create booking campaigns2 for booking options as admin and booking it a
   Scenario: Booking campaigns2: conditions states option customfield does not contain and profile field does contain values
     Given the following "mod_booking > campaigns" exist:
       | name      | type | json                                                                                                                                                                                                                                                    | starttime       | endtime         | pricefactor | limitfactor |
-      | campaign3 | 1    | {"bofieldname":"bcustom1","fieldvalue":"exclude","campaignfieldnameoperator":"!~","cpfield":"ucustom1","cpoperator":"~","cpvalue":"student","blockoperator":"blockbelow","blockinglabel":"Below50","hascapability":null,"percentageavailableplaces":50} | ## yesterday ## | ## + 1 month ## | 1           | 1           |
+      | campaign3 | 1    | {"bofieldname":"bcustom1","fieldvalue":"exclude","campaignfieldnameoperator":"!~","cpfield":"ucustom1","cpoperator":"~","cpvalue":["student"],"blockoperator":"blockbelow","blockinglabel":"Below50","hascapability":null,"percentageavailableplaces":50} | ## yesterday ## | ## + 1 month ## | 1           | 1           |
     ## Verify "above" blocking campaing2
     When I am on the "BookingCMP" Activity page logged in as student1
     And I should see "Book now" in the ".allbookingoptionstable_r1 .booknow" "css_element"
@@ -102,8 +103,8 @@ Feature: Create booking campaigns2 for booking options as admin and booking it a
   ## @javascript
   Scenario: Booking campaigns2: conditions states option customfield does contain and profile field does not contain values
     Given the following "mod_booking > campaigns" exist:
-      | name      | type | json                                                                                                                                                                                                                                                    | starttime       | endtime         | pricefactor | limitfactor |
-      | campaign3 | 1    | {"bofieldname":"bcustom1","fieldvalue":"include","campaignfieldnameoperator":"=","cpfield":"ucustom1","cpoperator":"!~","cpvalue":"student","blockoperator":"blockbelow","blockinglabel":"Below50","hascapability":null,"percentageavailableplaces":50} | ## yesterday ## | ## + 1 month ## | 1           | 1           |
+      | name      | type | json                                                                                                                                                                                                                                                      | starttime       | endtime         | pricefactor | limitfactor |
+      | campaign3 | 1    | {"bofieldname":"bcustom1","fieldvalue":"include","campaignfieldnameoperator":"=","cpfield":"ucustom1","cpoperator":"!~","cpvalue":["student"],"blockoperator":"blockbelow","blockinglabel":"Below50","hascapability":null,"percentageavailableplaces":50} | ## yesterday ## | ## + 1 month ## | 1           | 1           |
     ## Verify "above" blocking campaing2
     When I am on the "BookingCMP" Activity page logged in as student1
     And I should see "Book now" in the ".allbookingoptionstable_r1 .booknow" "css_element"

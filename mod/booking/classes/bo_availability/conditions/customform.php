@@ -64,13 +64,33 @@ class customform implements bo_condition {
     public $customsettings = null;
 
     /**
+     * Singleton instance.
+     *
+     * @var object
+     */
+    private static $instance = null;
+
+    /**
+     * Singleton instance.
+     *
+     * @param ?int $id
+     * @return object
+     *
+     */
+    public static function instance(?int $id = null): object {
+        if (empty(self::$instance)) {
+            self::$instance = new self($id);
+        }
+        return self::$instance;
+    }
+
+    /**
      * Constructor.
      *
      * @param ?int $id
      * @return void
      */
-    public function __construct(?int $id = null) {
-
+    private function __construct(?int $id = null) {
         if ($id) {
             $this->id = $id;
         }
@@ -279,6 +299,19 @@ class customform implements bo_condition {
                     'deleteinfoscheckboxuser'
                 );
 
+                $mform->addElement(
+                    'advcheckbox',
+                    'bo_cond_customform_enroluserstowaitinglist' . $counter,
+                    get_string('enroluserstowaitinglist', 'mod_booking'),
+                    [],
+                );
+                $mform->hideIf(
+                    'bo_cond_customform_enroluserstowaitinglist' . $counter,
+                    'bo_cond_customform_select_1_' . $counter,
+                    'neq',
+                    'enrolusersaction'
+                );
+
                 if ($CFG->version >= 2023100900) {
                     $mform->addElement(
                         'static',
@@ -340,14 +373,12 @@ class customform implements bo_condition {
                 $counter++;
             }
 
-            $url = new moodle_url('/mod/booking/edit_rules.php');
             $mform->addElement(
                 'advcheckbox',
                 'bo_cond_customform_deleteinfoscheckboxadmin',
                 "",
-                get_string('deleteinfoscheckboxadmin',
-                'mod_booking',
-                $url->out()));
+                get_string('deleteinfoscheckboxadmin', 'mod_booking')
+            );
             $mform->hideIf(
                 'bo_cond_customform_deleteinfoscheckboxadmin',
                 'bo_cond_customform_restrict',
@@ -359,11 +390,13 @@ class customform implements bo_condition {
             'eq',
             0);
             if ($CFG->version >= 2023100900) {
+                $rulesmoodleurl = new moodle_url('/mod/booking/edit_rules.php');
+                $rulesurl = $rulesmoodleurl->out(true);
                 $mform->addElement(
                     'static',
                     'deleteinfoscheckboxadminwarning',
                     '',
-                    get_string('deleteinfoscheckboxadminwarning', 'mod_booking')
+                    get_string('deleteinfoscheckboxadminwarning', 'mod_booking', $rulesurl)
                 );
                 $mform->hideIf(
                     'deleteinfoscheckboxadminwarning',
@@ -469,6 +502,9 @@ class customform implements bo_condition {
             $key = 'bo_cond_customform_notempty_' . $formcounter . '_' . $counter;
             $formobject->notempty = $fromform->{$key} ?? null;
 
+            $key = 'bo_cond_customform_enroluserstowaitinglist' . $counter;
+            $formobject->enroluserstowaitinglist = $fromform->{$key} ?? null;
+
             $newform[$counter] = $formobject;
 
             // If the next key is not there, we increase $formcounter, else $counter.
@@ -517,6 +553,9 @@ class customform implements bo_condition {
 
                 $key = 'bo_cond_customform_notempty_' . $formcounter . '_' . $counter;
                 $defaultvalues->{$key} = $formelement->notempty ?? 0;
+
+                $key = 'bo_cond_customform_enroluserstowaitinglist' . $counter;
+                $defaultvalues->{$key} = $formelement->enroluserstowaitinglist ?? 0;
             }
         }
         if (isset($acdefault->deleteinfoscheckboxadmin) && !empty($acdefault->deleteinfoscheckboxadmin)) {

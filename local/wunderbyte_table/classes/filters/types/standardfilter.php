@@ -31,6 +31,56 @@ use local_wunderbyte_table\wunderbyte_table;
  * Wunderbyte table class is an extension of table_sql.
  */
 class standardfilter extends base {
+    /**
+     * Property to indicate if class has implemented a callback
+     *
+     * @var bool
+     */
+    public $hascallback = false;
+
+    /**
+     * Callable function
+     *
+     * @var callable|null
+     */
+    public $callback = null;
+
+    /**
+     * SQL (including properties field, where, from) to append to table sql.
+     *
+     * @var \stdClass
+     */
+    private $sql;
+
+    /**
+     * This function adds sql to the table sql.
+     *
+     * @param wunderbyte_table $table
+     *
+     * @return void
+     *
+     */
+    public function add_sql(wunderbyte_table $table) {
+    }
+
+    /**
+     * [Description for define_sql]
+     *
+     * @param string $field
+     * @param string $from
+     * @param string $where
+     *
+     * @return void
+     *
+     */
+    public function define_sql(string $field, string $from, string $where) {
+        $sql = [
+            'field' => $field,
+            'from' => $from,
+            'where' => $where,
+        ];
+        $this->sql = $sql;
+    }
 
     /**
      * This function takes a key value pair of options.
@@ -43,61 +93,8 @@ class standardfilter extends base {
      * @return void
      */
     public function add_options(array $options = []) {
-
         foreach ($options as $key => $value) {
             $this->options[$key] = $value;
         }
     }
-
-    /**
-     * Apply the filter of standardfilter class.
-     *
-     * @param string $filter
-     * @param string $columnname
-     * @param mixed $categoryvalue
-     * @param wunderbyte_table $table
-     *
-     * @return void
-     *
-     */
-    public function apply_filter(
-        string &$filter,
-        string $columnname,
-        $categoryvalue,
-        wunderbyte_table &$table
-    ): void {
-        global $DB;
-        $filtercounter = 1;
-        $filter .= " ( ";
-        foreach ($categoryvalue as $key => $value) {
-            $filter .= $filtercounter == 1 ? "" : " OR ";
-            // Apply special filter here.
-            if (
-                isset($table->subcolumns['datafields'][$columnname]['jsonattribute'])
-            ) {
-                    $paramsvaluekey = $table->set_params("%" . $value ."%");
-                    $filter .= $DB->sql_like("$columnname", ":$paramsvaluekey", false);
-            } else if (
-                is_numeric($value)
-                && isset($table->subcolumns['datafields'][$columnname]['local_wunderbyte_table\filters\types\hourlist'])
-            ) {
-                // Here we check if it's an hourslist filter.
-                $paramsvaluekey = $table->set_params((string) ($value + $delta), false);
-                $filter .= filter::apply_hourlist_filter($columnname, ":$paramsvaluekey");
-                $delta = filter::get_timezone_offset();
-            } else {
-                // We want to find the value in an array of values.
-                // Therefore, we have to use or as well.
-                // First, make sure we have enough params we can use..
-                $separator = $table->subcolumns['datafields'][$columnname]['explode'] ?? ",";
-                $paramsvaluekey = $table->set_params('%' . $separator . $value . $separator . '%', true);
-                $escapecharacter = wunderbyte_table::return_escape_character($value);
-                $concatvalue = $DB->sql_concat("'$separator'", $columnname, "'$separator'");
-                $filter .= $DB->sql_like("$concatvalue", ":$paramsvaluekey", false, false, false, $escapecharacter);
-            }
-            $filtercounter++;
-        }
-        $filter .= " ) ";
-    }
-
 }

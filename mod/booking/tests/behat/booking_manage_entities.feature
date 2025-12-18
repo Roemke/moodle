@@ -17,11 +17,12 @@ Feature: In a course add a booking option and manage its entities
       | teacher1 | C1     | manager        |
       | student1 | C1     | student        |
       | student2 | C1     | student        |
+    And I clean booking cache
     And the following "activities" exist:
       | activity | course | name       | intro                  | bookingmanager | eventtype |
       | booking  | C1     | BookingEnt | My booking description | teacher1       | Webinar   |
     And the following "mod_booking > options" exist:
-      | booking    | text           | course | description  | teachersforoption | maxanswers | maxoverbooking | optiondateid_1 | daystonotify_1 | coursestarttime_1 | courseendtime_1 |
+      | booking    | text           | course | description  | teachersforoption | maxanswers | maxoverbooking | optiondateid_0 | daystonotify_0 | coursestarttime_0 | courseendtime_0 |
       | BookingEnt | Option: entity | C1     | Entity       | teacher1          | 5          | 5              | 0              | 0              | 2346937200        | 2347110000      |
     ## 2044/05/15 - 2044/05/17
     And the following "local_entities > entities" exist:

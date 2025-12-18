@@ -27,6 +27,7 @@ namespace local_wunderbyte_table\filters;
 use cache;
 use cache_helper;
 use coding_exception;
+use core_component;
 use dml_exception;
 use local_wunderbyte_table\editfilter;
 use local_wunderbyte_table\filter;
@@ -40,7 +41,6 @@ use stdClass;
  * @package local_wunderbyte_table
  */
 class filters_info {
-
     /**
      * Handles form definition of filter classes.
      * @param MoodleQuickForm $mform
@@ -58,7 +58,7 @@ class filters_info {
         $table = wunderbyte_table::instantiate_from_tablecache_hash($encodedtable);
 
         // We need to localize the filter for every user.
-        $lang = current_language();
+        $lang = filter::current_language();
         $key = $table->tablecachehash . $lang . '_filterjson';
 
         // We want the live and uncached datafields.
@@ -104,7 +104,6 @@ class filters_info {
      * @return void
      */
     public static function validation(array $data, array $files, array &$errors) {
-
     }
 
     /**
@@ -121,7 +120,7 @@ class filters_info {
         // And fill in the data form.
 
         // We need to localize the filter for every user.
-        $lang = current_language();
+        $lang = filter::current_language();
         $key = $table->tablecachehash . $lang . '_filterjson';
 
         $filtersettings = editfilter::return_filtersettings($table, $key);
@@ -135,6 +134,5 @@ class filters_info {
                 $classname::set_data($data, (object)$filter);
             }
         }
-
     }
 }

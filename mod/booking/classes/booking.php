@@ -32,6 +32,7 @@ use local_entities\local\entities\entitydate;
 use mod_booking\bo_availability\bo_info;
 use mod_booking\local\modechecker;
 use mod_booking\teachers_handler;
+use mod_booking\utils\wb_payment;
 use moodle_exception;
 use stdClass;
 use moodle_url;
@@ -53,7 +54,6 @@ require_once($CFG->dirroot . '/mod/booking/locallib.php');
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class booking {
-
     /** @var int id booking id  */
     public $id = 0;
 
@@ -122,11 +122,14 @@ class booking {
 
         // If the course has groups and I do not have the capability to see all groups, show only
         // users of my groups.
+        // phpcs:ignore moodle.Commenting.TodoComment.MissingInfoInline
         // TODO: Move this potentially expensive function to settings and, with its own cache.
         // It needs to use the live information from cm & context and be invalidated by group change events in this course.
-        if (groups_get_activity_groupmode($this->cm) == SEPARATEGROUPS &&
-                !has_capability('moodle/site:accessallgroups', $this->context)) {
-            list($sql, $params) = $this::booking_get_groupmembers_sql($this->course->id);
+        if (
+            groups_get_activity_groupmode($this->cm) == SEPARATEGROUPS &&
+                !has_capability('moodle/site:accessallgroups', $this->context)
+        ) {
+            [$sql, $params] = $this::booking_get_groupmembers_sql($this->course->id);
             $this->groupmembers = $DB->execute($sql, $params);
         }
     }
@@ -185,7 +188,15 @@ class booking {
         $values = explode(' ', $query);
 
         $fullsql = $DB->sql_concat(
-            '\' \'', 'u.id', '\' \'', 'u.firstname', '\' \'', 'u.lastname', '\' \'', 'u.email', '\' \''
+            '\' \'',
+            'u.id',
+            '\' \'',
+            'u.firstname',
+            '\' \'',
+            'u.lastname',
+            '\' \'',
+            'u.email',
+            '\' \''
         );
 
         $sql = "SELECT * FROM (
@@ -200,7 +211,6 @@ class booking {
             $firstrun = true;
             $counter = 1;
             foreach ($values as $value) {
-
                 $sql .= $firstrun ? ' WHERE ' : ' AND ';
                 $sql .= " " . $DB->sql_like('fulltextstring', ':param' . $counter, false) . " ";
                 // If it's numeric, we search for the full number - so we need to add blanks.
@@ -248,13 +258,19 @@ class booking {
 
         $totalcount = 1;
 
-        $allcourses = get_courses_search([], 'c.fullname ASC', 0, 9999999,
-            $totalcount, ['enrol/manual:enrol']);
+        $allcourses = get_courses_search(
+            [],
+            'c.fullname ASC',
+            0,
+            9999999,
+            $totalcount,
+            ['enrol/manual:enrol']
+        );
         $allcourseids = [];
         foreach ($allcourses as $id => $courseobject) {
             $allcourseids[] = $id;
         }
-        list($incourseids, $inparams) = $DB->get_in_or_equal($allcourseids, SQL_PARAMS_NAMED, 'inparam');
+        [$incourseids, $inparams] = $DB->get_in_or_equal($allcourseids, SQL_PARAMS_NAMED, 'inparam');
 
         $values = explode(' ', $query);
 
@@ -272,7 +288,6 @@ class booking {
             $firstrun = true;
             $counter = 1;
             foreach ($values as $value) {
-
                 $sql .= $firstrun ? ' WHERE ' : ' AND ';
                 $sql .= " " . $DB->sql_like('fulltextstring', ':param' . $counter, false) . " ";
                 // If it's numeric, we search for the full number - so we need to add blanks.
@@ -345,7 +360,6 @@ class booking {
             $firstrun = true;
             $counter = 1;
             foreach ($values as $value) {
-
                 $sql .= $firstrun ? ' WHERE ' : ' AND ';
                 $sql .= " " . $DB->sql_like('fulltextstring', ':param' . $counter, false) . " ";
                 $params['param' . $counter] = "%$value%";
@@ -389,6 +403,7 @@ class booking {
 
         $this->canbookusers = get_enrolled_users($this->context, 'mod/booking:choose', null, 'u.id');
 
+        // phpcs:ignore moodle.Commenting.TodoComment.MissingInfoInline
         // TODO check if course has guest access if not get all enrolled users and check with...
         // ...has_capability if user has right to book.
         // CODEBEGIN $this->canbookusers = get_users_by_capability($this->context, 'mod/booking:choose', CODEEND.
@@ -406,7 +421,7 @@ class booking {
         global $DB, $USER;
         $mygroups = groups_get_all_groups($courseid, $USER->id);
         $mygroupids = array_keys($mygroups);
-        list($insql, $params) = $DB->get_in_or_equal($mygroupids, SQL_PARAMS_NAMED, 'book_', true, -1);
+        [$insql, $params] = $DB->get_in_or_equal($mygroupids, SQL_PARAMS_NAMED, 'book_', true, -1);
         $groupsql = "SELECT DISTINCT u.id
                        FROM {user} u, {groups_members} gm
                       WHERE u.deleted = 0
@@ -453,11 +468,18 @@ class booking {
 
         global $DB;
 
-        list($fields, $from, $where, $params, $filter) = $this->get_all_options_sql($limitfrom, $limitnum,
-            $searchtext, $fields, $this->context);
+        [$fields, $from, $where, $params, $filter] = $this->get_all_options_sql(
+            $limitfrom,
+            $limitnum,
+            $searchtext,
+            $fields,
+            $this->context
+        );
 
         return $DB->get_records_sql(
-            "SELECT $fields FROM $from WHERE $where $filter", $params);
+            "SELECT $fields FROM $from WHERE $where $filter",
+            $params
+        );
     }
 
     /**
@@ -480,7 +502,9 @@ class booking {
         $params = array_merge(['bookingid' => $this->id], $rsearch['params']);
 
         return $DB->count_records_sql(
-            "SELECT COUNT(*) FROM {booking_options} bo WHERE bo.bookingid = :bookingid {$search}", $params);
+            "SELECT COUNT(*) FROM {booking_options} bo WHERE bo.bookingid = :bookingid {$search}",
+            $params
+        );
     }
 
     /**
@@ -520,7 +544,9 @@ class booking {
         return $DB->get_records_sql(
             "SELECT bo.id FROM {booking_options} bo " .
             "WHERE bo.bookingid = :bookingid AND (bo.courseendtime > :time OR bo.courseendtime = 0)" .
-            " {$search} {$limit}", $params);
+            " {$search} {$limit}",
+            $params
+        );
     }
 
     /**
@@ -546,7 +572,9 @@ class booking {
         return $DB->count_records_sql(
             "SELECT COUNT(*) FROM {booking_options} bo " .
             "WHERE bo.bookingid = :bookingid AND (bo.courseendtime > :time OR bo.courseendtime = 0)" .
-            " {$search}", $params);
+            " {$search}",
+            $params
+        );
     }
 
     /**
@@ -558,8 +586,11 @@ class booking {
     public static function get_all_optionids_of_teacher($bookingid) {
         global $DB, $USER;
 
-        return $DB->get_fieldset_select('booking_teachers', 'optionid',
-            "userid = {$USER->id} AND bookingid = $bookingid");
+        return $DB->get_fieldset_select(
+            'booking_teachers',
+            'optionid',
+            "userid = {$USER->id} AND bookingid = $bookingid"
+        );
     }
 
     /**
@@ -586,7 +617,9 @@ class booking {
 
         return $DB->get_records_sql(
             "SELECT ba.optionid id FROM {booking_options} bo LEFT JOIN {booking_answers} ba ON ba.optionid = bo.id WHERE" .
-                " ba.bookingid = :bookingid AND ba.userid = :userid {$search} {$limit}", $params);
+            " ba.bookingid = :bookingid AND ba.userid = :userid {$search} {$limit}",
+            $params
+        );
     }
 
     /**
@@ -610,7 +643,9 @@ class booking {
 
         return $DB->count_records_sql(
             "SELECT COUNT(*) FROM {booking_options} bo LEFT JOIN {booking_answers} ba ON ba.optionid = bo.id" .
-                " WHERE ba.bookingid = :bookingid AND ba.userid = :userid {$search}", $params);
+            " WHERE ba.bookingid = :bookingid AND ba.userid = :userid {$search}",
+            $params
+        );
     }
 
     /**
@@ -643,8 +678,11 @@ class booking {
         $outdata->count = $this->get_user_booking_count($user);
         $outdata->eventtype = $this->settings->eventtype;
 
-        $warning .= html_writer::tag('div', get_string('maxperuserwarning', 'mod_booking', $outdata),
-             ['class' => 'alert alert-warning']);
+        $warning .= html_writer::tag(
+            'div',
+            get_string('maxperuserwarning', 'mod_booking', $outdata),
+            ['class' => 'alert alert-warning']
+        );
         return $warning;
     }
 
@@ -660,14 +698,16 @@ class booking {
             return $this->userbookings;
         }
 
-        $activebookingcount = $DB->count_records_sql("SELECT COUNT(*)
+        $activebookingcount = $DB->count_records_sql(
+            "SELECT COUNT(*)
             FROM {booking_answers} ba
             LEFT JOIN {booking_options} bo ON bo.id = ba.optionid
             WHERE ba.bookingid = ?
             AND ba.userid = ?
             AND ba.waitinglist <= ?
             AND (bo.courseendtime = 0 OR bo.courseendtime > ?)",
-            [$this->id, $user->id, MOD_BOOKING_STATUSPARAM_WAITINGLIST, time()]);
+            [$this->id, $user->id, MOD_BOOKING_STATUSPARAM_WAITINGLIST, time()]
+        );
 
         return (int)$activebookingcount;
     }
@@ -792,10 +832,15 @@ class booking {
     public function get_manage_responses_fields() {
         global $DB;
         $reportfields = explode(',', $this->settings->reportfields);
-        list($addquoted, $addquotedparams) = $DB->get_in_or_equal($reportfields);
+        [$addquoted, $addquotedparams] = $DB->get_in_or_equal($reportfields);
 
-        $userprofilefields = $DB->get_records_select('user_info_field',
-                'id > 0 AND shortname ' . $addquoted, $addquotedparams, 'id', 'id, shortname, name');
+        $userprofilefields = $DB->get_records_select(
+            'user_info_field',
+            'id > 0 AND shortname ' . $addquoted,
+            $addquotedparams,
+            'id',
+            'id, shortname, name'
+        );
 
         $columns = [];
         $headers = [];
@@ -885,8 +930,10 @@ class booking {
                     $headers[] = get_string('notes', 'mod_booking');
                     break;
                 case 'idnumber':
-                    if ($DB->count_records_select('user', ' idnumber <> \'\'') > 0 &&
-                            has_capability('moodle/site:viewuseridentity', $this->context)) {
+                    if (
+                        $DB->count_records_select('user', ' idnumber <> \'\'') > 0 &&
+                            has_capability('moodle/site:viewuseridentity', $this->context)
+                    ) {
                         $columns[] = 'idnumber';
                         $headers[] = get_string("idnumber");
                     }
@@ -914,13 +961,16 @@ class booking {
     public function checkautocreate() {
         global $USER, $DB;
 
-        if ($this->settings->autcractive && !empty($this->settings->autcrprofile)
-            && !empty($this->settings->autcrvalue) && !empty($this->settings->autcrtemplate)) {
+        if (
+            $this->settings->autcractive && !empty($this->settings->autcrprofile)
+            && !empty($this->settings->autcrvalue) && !empty($this->settings->autcrtemplate)
+        ) {
             $customfields = profile_user_record($USER->id);
 
-            if (isset($customfields->{$this->settings->autcrprofile}) &&
-                $customfields->{$this->settings->autcrprofile} == $this->settings->autcrvalue) {
-
+            if (
+                isset($customfields->{$this->settings->autcrprofile}) &&
+                $customfields->{$this->settings->autcrprofile} == $this->settings->autcrvalue
+            ) {
                 $nrec = $DB->count_records('booking_teachers', ['userid' => $USER->id, 'bookingid' => $this->id]);
 
                 if ($nrec === 0) {
@@ -981,8 +1031,10 @@ class booking {
      * @return bool
      */
     public function uses_credits() {
-        if (isset($this->settings->iselective) && $this->settings->iselective == 1
-                && isset($this->settings->maxcredits) && $this->settings->maxcredits > 0) {
+        if (
+            isset($this->settings->iselective) && $this->settings->iselective == 1
+                && isset($this->settings->maxcredits) && $this->settings->maxcredits > 0
+        ) {
             return true;
         }
         return false;
@@ -1080,7 +1132,6 @@ class booking {
 
         // If the user does not have the capability to see invisible options...
         if (!$context || !has_capability('mod/booking:canseeinvisibleoptions', $context)) {
-
             // If we have a direct link, we only hide totally invisible options.
             if (isset($where['id'])) {
                 $where = " invisible <> 1 ";
@@ -1099,8 +1150,7 @@ class booking {
         }
         // Add where condition for userid.
         if ($userid !== null) {
-
-            list($inorequal, $inparams) = $DB->get_in_or_equal($bookingparams, SQL_PARAMS_NAMED);
+            [$inorequal, $inparams] = $DB->get_in_or_equal($bookingparams, SQL_PARAMS_NAMED);
 
             $innerfrom .= " JOIN {booking_answers} ba
                           ON ba.optionid=bo.id ";
@@ -1116,10 +1166,10 @@ class booking {
         }
 
         // Instead of "where" we return "filter". This is to support the filter functionality of wunderbyte table.
-        list($select1, $from1, $filter1, $params1) = booking_option_settings::return_sql_for_customfield();
-        list($select2, $from2, $filter2, $params2) = booking_option_settings::return_sql_for_teachers();
-        list($select3, $from3, $filter3, $params3) = booking_option_settings::return_sql_for_imagefiles();
-        list($select4, $from4, $filter4, $params4, $conditionsql) = bo_info::return_sql_from_conditions();
+        [$select1, $from1, $filter1, $params1] = booking_option_settings::return_sql_for_customfield();
+        [$select2, $from2, $filter2, $params2] = booking_option_settings::return_sql_for_teachers();
+        [$select3, $from3, $filter3, $params3] = booking_option_settings::return_sql_for_imagefiles();
+        [$select4, $from4, $filter4, $params4, $conditionsql] = bo_info::return_sql_from_conditions();
 
         // The $outerfrom takes all the select from the supplementary selects.
         $outerfrom .= !empty($select1) ? ", $select1 " : '';
@@ -1169,7 +1219,6 @@ class booking {
 
         $counter = 1;
         foreach ($filterarray as $key => $value) {
-
             // Be sure to have a lower key string.
             $paramsvaluekey = "param";
             while (isset($params[$paramsvaluekey])) {
@@ -1186,7 +1235,6 @@ class booking {
         }
 
         foreach ($wherearray as $key => $value) {
-
             // Be sure to have a lower key string.
             $paramsvaluekey = "param";
             while (isset($params[$paramsvaluekey])) {
@@ -1195,13 +1243,11 @@ class booking {
             }
 
             if (gettype($value) == 'array') {
-
                 $where .= " AND ( ";
                 $orstring = [];
-
+                // phpcs:ignore moodle.Commenting.TodoComment.MissingInfoInline
                 // TODO: This could be replaced with in or equal, but not sure of if its worth it.
                 foreach ($value as $arrayvalue) {
-
                     if (is_numeric($arrayvalue)) {
                         $number = (float)$arrayvalue;
                         $orstring[] = " $key = $number ";
@@ -1221,7 +1267,6 @@ class booking {
                 $where .= implode(' OR ', $orstring);
 
                 $where .= " ) ";
-
             } else if (gettype($value) == 'integer') {
                 $where .= " AND   $key = $value";
             } else {
@@ -1241,7 +1286,6 @@ class booking {
         }
 
         return [$fields, $from, $where, $params, $filter];
-
     }
 
     /**
@@ -1274,9 +1318,13 @@ class booking {
      * @param array $booked
      * @return void
      */
-    public function get_my_options_sql($limitfrom = 0, $limitnum = 0, $searchtext = '',
+    public function get_my_options_sql(
+        $limitfrom = 0,
+        $limitnum = 0,
+        $searchtext = '',
         $fields = "bo.*",
-        $booked = [MOD_BOOKING_STATUSPARAM_BOOKED]) {
+        $booked = [MOD_BOOKING_STATUSPARAM_BOOKED]
+    ) {
 
         global $DB, $USER;
 
@@ -1293,7 +1341,7 @@ class booking {
             $limit = " LIMIT {$limitfrom} OFFSET {$limitnum}";
         }
 
-        list($inorequal, $inparams) = $DB->get_in_or_equal($booked, SQL_PARAMS_NAMED);
+        [$inorequal, $inparams] = $DB->get_in_or_equal($booked, SQL_PARAMS_NAMED);
 
         $params = array_merge($params, $inparams);
 
@@ -1335,6 +1383,7 @@ class booking {
         global $CFG;
 
         // See github issue: https://github.com/Wunderbyte-GmbH/moodle-mod_booking/issues/305.
+        // phpcs:ignore moodle.Commenting.TodoComment.MissingInfoInline
         // TODO: We currently encode the whole URL, but we should only encode the params.
         // Encoding the whole URL makes migration to a new WWWROOT impossible.
 
@@ -1357,6 +1406,7 @@ class booking {
      */
     public static function return_array_of_entity_dates(array $areas): array {
 
+        // phpcs:ignore moodle.Commenting.TodoComment.MissingInfoInline
         // TODO: Now that the SQL has been changed, we need to fix this function!
 
         global $DB, $USER, $PAGE;
@@ -1366,7 +1416,7 @@ class booking {
         $params = [];
 
         if (!empty($areas['option'])) {
-            list($inoptionsql, $optionparams) = $DB->get_in_or_equal($areas['option'], SQL_PARAMS_NAMED);
+            [$inoptionsql, $optionparams] = $DB->get_in_or_equal($areas['option'], SQL_PARAMS_NAMED);
             // We only select options with an odcount of NULL meaning there are no optiondates.
             // If there are optiondates, we are only interested in them and ignore the option itself.
             $sql .= " WHERE (
@@ -1378,11 +1428,10 @@ class booking {
         }
 
         if (!empty($areas['optiondate'])) {
-
             // Do we need WHERE or OR?
             $sql .= empty($inoptionsql) ? " WHERE " : " OR ";
 
-            list($inoptiondatesql, $optiondateparams) = $DB->get_in_or_equal($areas['optiondate'], SQL_PARAMS_NAMED);
+            [$inoptiondatesql, $optiondateparams] = $DB->get_in_or_equal($areas['optiondate'], SQL_PARAMS_NAMED);
 
             $sql .= "(s1.area = 'optiondate' AND s1.instanceid $inoptiondatesql)";
             $params = array_merge($params, $optiondateparams);
@@ -1400,7 +1449,6 @@ class booking {
 
         // Bring the result in the correct form.
         foreach ($records as $record) {
-
             $optionsettings = singleton_service::get_instance_of_booking_option_settings($record->optionid);
 
             if (!modechecker::is_ajax_or_webservice_request()) {
@@ -1422,8 +1470,12 @@ class booking {
             $isinvisible = !empty($optionsettings->invisible) ? true : false;
 
             // If the option is invisible and the user has no right to see it, we continue.
-            if ($isinvisible && !has_capability('mod/booking:canseeinvisibleoptions',
-                context_module::instance($optionsettings->cmid))) {
+            if (
+                $isinvisible && !has_capability(
+                    'mod/booking:canseeinvisibleoptions',
+                    context_module::instance($optionsettings->cmid)
+                )
+            ) {
                 continue;
             }
 
@@ -1441,7 +1493,10 @@ class booking {
                 $optiontitle,
                 $record->coursestarttime,
                 $record->courseendtime,
-                1, $link, $bgcolor);
+                1,
+                $link,
+                $bgcolor
+            );
 
             $returnarray[] = $newentittydate;
         }
@@ -1507,7 +1562,6 @@ class booking {
     public static function get_sql_for_fieldofstudy(string $dbname, array $courses) {
 
         switch ($dbname) {
-
             case 'pgsql_native_moodle_database':
                 return "
                     FROM (SELECT bos2.*
@@ -1528,12 +1582,10 @@ class booking {
                 ";
 
             case 'mariadb_native_moodle_database':
-
                 $where = "";
                 $wherearray = [];
 
                 foreach ($courses as $courseid) {
-
                     $wherearray[] = " JSON_SEARCH(bos1.boscourseids, 'one', '" . $courseid . "') IS NOT NULL ";
                 }
 
@@ -1553,7 +1605,7 @@ class booking {
                             ) AS boscourseids
                             FROM {booking_options}
                         ) bos1
-                        WHERE bos1.boavailid = '". MOD_BOOKING_BO_COND_JSON_ENROLLEDINCOURSE . "'"
+                        WHERE bos1.boavailid = '" . MOD_BOOKING_BO_COND_JSON_ENROLLEDINCOURSE . "'"
                     . $where . " ) bo";
         }
     }
@@ -1569,9 +1621,10 @@ class booking {
      *
      */
     public static function return_sql_for_event_logs(
-            string $component = 'mod_booking',
-            array $eventnames = [],
-            int $objectid = 0) {
+        string $component = 'mod_booking',
+        array $eventnames = [],
+        int $objectid = 0
+    ) {
         global $DB;
 
         $select = "*";
@@ -1587,13 +1640,12 @@ class booking {
         $where = 'component = :component ';
 
         if (!empty($eventnames)) {
-            list($inorequal, $params) = $DB->get_in_or_equal($eventnames, SQL_PARAMS_NAMED);
+            [$inorequal, $params] = $DB->get_in_or_equal($eventnames, SQL_PARAMS_NAMED);
 
             $where .= " AND eventname " . $inorequal;
         }
 
         if (!empty($objectid)) {
-
             $where .= " AND objectid = :objectid ";
             $params['objectid'] = $objectid;
         }
@@ -1673,14 +1725,14 @@ class booking {
         $returnarry = [];
 
         foreach ($newoption as $key => $value) {
-
             if (in_array($key, $keystoexclude)) {
                 continue;
             }
 
-            if (isset($oldoption->{$key})
-                && $oldoption->{$key} != $value) {
-
+            if (
+                isset($oldoption->{$key})
+                && $oldoption->{$key} != $value
+            ) {
                 switch ($key) {
                     case 'name':
                         $fieldname = 'bookingname';
@@ -1745,5 +1797,107 @@ class booking {
             // Make sure, we destroy singletons too.
             singleton_service::destroy_booking_singleton_by_cmid($cmid);
         }
+    }
+
+    /**
+     * Helper function to generate label descriptions, e.g. for navigation elements.
+     * @param string $prefix prefix for classes, e.g. the name of the moodle page like "report2"
+     * @param array $scopes an array of scopes, e.g. ["option", "instance", "course", "system"]
+     * @return string styling css embedded in html (with surrounding <style> element)
+     */
+    public static function generate_localized_css_for_navigation_labels(string $prefix, array $scopes) {
+        $css = "";
+
+        $last = end($scopes);
+
+        foreach ($scopes as $scope) {
+            $islast = ($last == $scope);
+            $css .= '
+            .' . $prefix . "-" . $scope . '-border::before {
+                content: "' . get_string($prefix . 'label' . $scope, 'mod_booking') . '";
+                position: absolute;
+                top: -10px;
+                left: 5px;
+                padding: 0 3px;
+                font-weight: 200;
+                font-size: small;
+                background-color: white;
+                color: ' . ($islast ? '#000' : '#333') . ';
+                white-space: nowrap;
+            }
+            .' . $prefix . '-' . $scope . '-border {
+                display: inline-block;
+                position: relative;
+                padding: 10px 20px;
+                margin-bottom: 10px;
+                border: ' . ($islast ? '1px solid black' : '1px dashed gray') . ';
+                border-radius: 5px;
+                color: ' . ($islast ? '#0f6cbf' : 'gray') . ';
+                font-size: large;
+                font-weight: lighter;
+                white-space: nowrap;
+            }
+            ';
+        }
+
+        return "<style>$css</style>";
+    }
+
+    /**
+     * Helper function to shorten long texts and add 3 dots "..." at the end.
+     * @param string $text input text to be shortened
+     * @param int $length maximum length after which the "..." should be added
+     * @return string the return string, e.g. "Lorem ipsum..."
+     */
+    public static function shorten_text($text, $length = 20) {
+        return (strlen($text) > $length) ? substr($text, 0, $length) . "..." : $text;
+    }
+
+    /**
+     * Helper function to get an array of all available booking cmids.
+     * @return array all cmids of booking instances
+     */
+    public static function get_all_cmids() {
+        global $DB;
+        $sql = "SELECT cm.id AS cmid
+                  FROM {course_modules} cm
+                  JOIN {modules} m
+                    ON m.id = cm.module
+                   AND m.name = 'booking'
+              ORDER BY cm.id DESC";
+        return $DB->get_fieldset_sql($sql);
+    }
+
+    /**
+     * Helper function to get the right array of possible presence statuses.
+     * @param bool $withempty if true, the array will start with an empty value
+     * @return array of possible presence statuses
+     */
+    public static function get_possible_presences(bool $withempty = true) {
+        if ($withempty) {
+            $presences[0] = '';
+        }
+        if (wb_payment::pro_version_is_activated()) {
+            $storedpresences = explode(',', get_config('booking', 'presenceoptions'));
+            if (
+                empty($storedpresences)
+                || (count($storedpresences) == 1 && empty($storedpresences[0]))
+            ) {
+                // Fallback: If no presences were set at all, use all possible presences.
+                foreach (MOD_BOOKING_ALL_POSSIBLE_PRESENCES_ARRAY as $key => $value) {
+                    $presences[$key] = $value;
+                }
+            } else {
+                foreach ($storedpresences as $id) {
+                    $presences[$id] = MOD_BOOKING_ALL_POSSIBLE_PRESENCES_ARRAY[$id];
+                }
+            }
+        } else {
+            // Without PRO version, use all possible presences.
+            foreach (MOD_BOOKING_ALL_POSSIBLE_PRESENCES_ARRAY as $key => $value) {
+                $presences[$key] = $value;
+            }
+        }
+        return $presences;
     }
 }
